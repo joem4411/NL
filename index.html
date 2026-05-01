@@ -25,26 +25,37 @@
         input, select { outline: none; transition: border-color 0.2s; border: 1px solid #e2e8f0; }
         input:focus, select:focus { border-color: var(--brand-green) !important; }
         
+        #sidebar { transition: transform 0.3s ease; z-index: 50; }
+        #main-content { transition: margin-inline-start 0.3s ease; }
+
         /* Layout modes */
         body.mode-distribute #sidebar { display: none !important; }
-        body.mode-distribute #main-content { margin-left: 0 !important; width: 100% !important; max-width: 1200px; margin: 0 auto; }
+        body.mode-distribute #main-content { margin-inline-start: 0 !important; width: 100% !important; max-width: 1400px; margin: 0 auto; }
 
-        body.mode-full #sidebar { display: flex; }
-        body.mode-full #main-content { margin-left: 16rem; }
-        body.sidebar-collapsed #sidebar { transform: translateX(-100%); }
-        body.sidebar-collapsed #main-content { margin-left: 0; }
-        [dir="rtl"] body.sidebar-collapsed #sidebar { transform: translateX(100%); }
-        [dir="rtl"] body.mode-full #main-content { margin-left: 0; margin-right: 16rem; }
-        [dir="rtl"] body.sidebar-collapsed #main-content { margin-right: 0; }
+        /* Desktop Layout */
+        @media (min-width: 768px) {
+            body.mode-full #sidebar { transform: translateX(0); }
+            [dir="rtl"] body.mode-full #sidebar { transform: translateX(0); }
+            body.mode-full #main-content { margin-inline-start: 16rem; }
+
+            body.sidebar-collapsed #sidebar { transform: translateX(-100%); }
+            [dir="rtl"] body.sidebar-collapsed #sidebar { transform: translateX(100%); }
+            body.sidebar-collapsed #main-content { margin-inline-start: 0; }
+        }
+
+        /* Mobile Layout */
+        @media (max-width: 767px) {
+            #sidebar { transform: translateX(-100%); }
+            [dir="rtl"] #sidebar { transform: translateX(100%); }
+            body.sidebar-open #sidebar { transform: translateX(0) !important; }
+            #main-content { margin-inline-start: 0 !important; width: 100%; }
+        }
         
         #entry-overlay { position: fixed; inset: 0; background: var(--brand-green); z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         
         /* RTL Support */
         [dir="rtl"] .text-left { text-align: right; }
         [dir="rtl"] .text-right { text-align: left; }
-        [dir="rtl"] .ml-2 { margin-left: 0; margin-right: 0.5rem; }
-        [dir="rtl"] .mr-2 { margin-right: 0; margin-left: 0.5rem; }
-        [dir="rtl"] .ml-64 { margin-left: 0; margin-right: 16rem; }
     </style>
 </head>
 <body class="bg-[#f8fafc] min-h-screen font-sans text-slate-800 flex overflow-hidden">
@@ -76,7 +87,7 @@
     </div>
 
     <!-- Sidebar Navigation -->
-    <aside id="sidebar" class="fixed inset-y-0 start-0 bg-white w-64 shadow-xl z-40 transition-transform flex flex-col border-e border-slate-100">
+    <aside id="sidebar" class="fixed inset-y-0 start-0 bg-white w-64 shadow-xl flex flex-col border-e border-slate-100">
         <div class="p-6 border-b border-slate-100 flex items-center justify-between">
             <div class="flex items-center gap-3">
                 <div id="logo-container" class="shrink-0">
@@ -111,7 +122,7 @@
     </aside>
 
     <!-- Main Content Area -->
-    <div id="main-content" class="flex-1 flex flex-col h-screen overflow-y-auto transition-all">
+    <div id="main-content" class="flex-1 flex flex-col h-screen overflow-y-auto">
         <header class="bg-white border-b border-slate-100 sticky top-0 z-30 px-6 py-4 flex items-center justify-between">
             <div class="flex items-center gap-3">
                 <button onclick="toggleSidebar()" id="header-menu-btn" class="text-slate-600 hover:text-brand bg-slate-50 p-2 rounded-lg"><i data-lucide="menu" class="w-5 h-5"></i></button>
@@ -119,9 +130,9 @@
             </div>
             
             <div class="flex items-center gap-3">
-                <div id="firebase-status" class="hidden md:flex p-2 bg-slate-50 rounded-xl items-center gap-2 text-[10px] font-black uppercase text-slate-500">
-                    <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Checking DB...
-                </div>
+                <button id="header-firebase-status" onclick="manualSync()" class="hidden md:flex p-2 px-3 bg-amber-400 text-white border border-amber-500 rounded-xl items-center gap-2 text-[10px] font-black uppercase shadow-sm transition-all" title="Click to force sync">
+                    <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> <span>Checking DB...</span>
+                </button>
                 <button onclick="toggleLang()" class="bg-slate-50 border border-slate-200 text-slate-600 px-3 py-2 rounded-xl text-[12px] hover:bg-slate-100 shadow-sm transition-all flex items-center justify-center font-black gap-2" title="Toggle Language">
                     <i data-lucide="globe" class="w-4 h-4"></i> <span id="lang-ind-main">AR</span>
                 </button>
@@ -131,7 +142,7 @@
             </div>
         </header>
 
-        <main class="w-full p-4 md:p-6 space-y-8 flex-1 max-w-6xl mx-auto">
+        <main class="w-full p-4 md:p-6 space-y-8 flex-1 max-w-[1400px] mx-auto">
             
             <!-- Stats Dashboard -->
             <section id="view-dashboard" class="page-view space-y-6">
@@ -389,9 +400,9 @@
                         </div>
                         <div class="space-y-4">
                             
-                            <div id="firebase-status-admin" class="p-3 bg-slate-50 rounded-xl flex items-center gap-2 text-xs font-black uppercase text-slate-500">
+                            <button id="firebase-status-admin" onclick="manualSync()" class="flex w-full justify-center p-3 rounded-xl items-center gap-2 text-xs font-black uppercase transition-all bg-amber-400 text-white border border-amber-500 cursor-pointer">
                                 <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Checking Database...
-                            </div>
+                            </button>
 
                             <p class="text-[10px] font-bold text-slate-400 uppercase leading-relaxed" data-i18n="adm_ddesc">Download a manual JSON backup or restore from file.</p>
                             
@@ -460,9 +471,121 @@
         </div>
     </div>
 
-    <!-- Core Scripts -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-app.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-analytics.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCUnCl87m0z8Z3QXTOVPiT5p5R3ttLU634",
+            authDomain: "nlcc-29a65.firebaseapp.com",
+            projectId: "nlcc-29a65",
+            storageBucket: "nlcc-29a65.firebasestorage.app",
+            messagingSenderId: "763242167923",
+            appId: "1:763242167923:web:965c770072fe5d3937f406",
+            measurementId: "G-ST9FX5JKDM"
+        };
+
+        let fbDb = null;
+        let fbDocPath = null;
+        let syncTimeout = null;
+        let isSaving = false;
+
+        async function initFirebase() {
+            try {
+                const app = initializeApp(firebaseConfig);
+                const auth = getAuth(app);
+                const analytics = getAnalytics(app);
+                fbDb = getFirestore(app);
+                
+                await signInAnonymously(auth);
+                fbDocPath = doc(fbDb, 'nlcc_state', 'master');
+                
+                onSnapshot(fbDocPath, (docSnap) => {
+                    if (docSnap.exists() && !isSaving && Date.now() - window._lastSaveTime > 2500) {
+                        const data = docSnap.data();
+                        window.state = { ...window.state, ...data };
+                        
+                        if(data.dashDate) window.state.dashDate = new Date(data.dashDate);
+                        if(data.payDate) window.state.payDate = new Date(data.payDate);
+                        if(data.journDate) window.state.journDate = new Date(data.journDate);
+                        
+                        localStorage.setItem('NLCC_MASTER_V26', JSON.stringify(window.state));
+                        if(window.updateUIBranding) window.updateUIBranding();
+                        
+                        const tag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+                        const isTyping = tag === 'input' || tag === 'textarea' || tag === 'select';
+                        if(!isTyping && window.fullUIRender) {
+                            window.fullUIRender();
+                        }
+                    }
+                    window.updateFirebaseStatusOnline();
+                }, (error) => {
+                    console.error("Firebase Sync Error", error);
+                    window.updateFirebaseStatusOffline();
+                });
+            } catch(e) {
+                console.log("Local mode only");
+            }
+        }
+
+        window._triggerFirebaseSync = function() {
+            if(!fbDocPath) return;
+            if(syncTimeout) clearTimeout(syncTimeout);
+            syncTimeout = setTimeout(() => {
+                isSaving = true;
+                const cleanState = { ...window.state };
+                cleanState.dashDate = window.state.dashDate.getTime();
+                cleanState.payDate = window.state.payDate.getTime();
+                cleanState.journDate = window.state.journDate.getTime();
+                setDoc(fbDocPath, cleanState).finally(() => isSaving = false);
+            }, 1500); 
+        };
+
+        window.manualSync = function() {
+            const hStatus = document.getElementById('header-firebase-status');
+            const aStatus = document.getElementById('firebase-status-admin');
+            const htmlSyncing = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> <span>${window.currentLang === 'ar' ? 'جاري المزامنة...' : 'Syncing...'}</span>`;
+            const syncClass = "hidden md:flex p-2 px-3 rounded-xl items-center gap-2 text-[10px] font-black uppercase shadow-sm transition-all bg-amber-400 text-white hover:bg-amber-500 border border-amber-500 cursor-pointer";
+            
+            if(hStatus) { hStatus.innerHTML = htmlSyncing; hStatus.className = syncClass; }
+            if(aStatus) { aStatus.innerHTML = htmlSyncing; aStatus.className = syncClass.replace('hidden md:flex', 'flex w-full justify-center').replace('p-2 px-3 text-[10px]', 'p-3 text-xs'); }
+            if(window.lucide) window.lucide.createIcons();
+            
+            if(window._triggerFirebaseSync) {
+                window._triggerFirebaseSync();
+                setTimeout(() => { window.updateFirebaseStatusOnline(); }, 1500);
+            }
+        };
+
+        window.updateFirebaseStatusOnline = function() {
+            const hStatus = document.getElementById('header-firebase-status');
+            const aStatus = document.getElementById('firebase-status-admin');
+            const htmlOnline = `<i data-lucide="cloud-lightning" class="w-4 h-4"></i> <span>${window.t('db_sync')}</span>`;
+            const onlineClass = "hidden md:flex p-2 px-3 rounded-xl items-center gap-2 text-[10px] font-black uppercase shadow-sm transition-all bg-emerald-500 text-white hover:bg-emerald-600 border border-emerald-600 cursor-pointer";
+            
+            if(hStatus) { hStatus.innerHTML = htmlOnline; hStatus.className = onlineClass; }
+            if(aStatus) { aStatus.innerHTML = htmlOnline; aStatus.className = onlineClass.replace('hidden md:flex', 'flex w-full justify-center').replace('p-2 px-3 text-[10px]', 'p-3 text-xs'); }
+            if(window.lucide) window.lucide.createIcons();
+        };
+
+        window.updateFirebaseStatusOffline = function() {
+            const hStatus = document.getElementById('header-firebase-status');
+            const aStatus = document.getElementById('firebase-status-admin');
+            const htmlOffline = `<i data-lucide="wifi-off" class="w-4 h-4"></i> <span>${window.t('db_err')}</span>`;
+            const offlineClass = "hidden md:flex p-2 px-3 rounded-xl items-center gap-2 text-[10px] font-black uppercase shadow-sm transition-all bg-red-500 text-white hover:bg-red-600 border border-red-600 cursor-pointer";
+            
+            if(hStatus) { hStatus.innerHTML = htmlOffline; hStatus.className = offlineClass; }
+            if(aStatus) { aStatus.innerHTML = htmlOffline; aStatus.className = offlineClass.replace('hidden md:flex', 'flex w-full justify-center').replace('p-2 px-3 text-[10px]', 'p-3 text-xs'); }
+            if(window.lucide) window.lucide.createIcons();
+        };
+
+        initFirebase();
+    </script>
+
     <script>
-        const STORAGE_KEY = 'NLCC_MASTER_V25';
+        const STORAGE_KEY = 'NLCC_MASTER_V26';
         window._lastSaveTime = 0;
         
         window.currentLang = "en";
@@ -637,7 +760,11 @@
         window.logout = logout;
 
         function toggleSidebar() {
-            document.body.classList.toggle('sidebar-collapsed');
+            if(window.innerWidth < 768) {
+                document.body.classList.toggle('sidebar-open');
+            } else {
+                document.body.classList.toggle('sidebar-collapsed');
+            }
         }
         window.toggleSidebar = toggleSidebar;
 
@@ -668,12 +795,12 @@
 
         function saveSettings(e) {
             window.state.centerName = document.getElementById('cfg-name').value;
-            localSave();
+            window.localSave();
             const btn = e.currentTarget;
             const old = btn.innerText;
             btn.innerText = window.t('adm_save') + " ✅";
             setTimeout(() => { btn.innerText = old; }, 2000);
-            updateUIBranding();
+            window.updateUIBranding();
         }
         window.saveSettings = saveSettings;
 
@@ -681,7 +808,7 @@
             const file = event.target.files[0];
             if(!file) return;
             const reader = new FileReader();
-            reader.onload = (e) => { window.state.logoBase64 = e.target.result; localSave(); updateUIBranding(); };
+            reader.onload = (e) => { window.state.logoBase64 = e.target.result; window.localSave(); window.updateUIBranding(); };
             reader.readAsDataURL(file);
         }
         window.handleLogoUpload = handleLogoUpload;
@@ -692,9 +819,9 @@
             document.querySelectorAll('#main-nav button').forEach(b => b.classList.remove('nav-btn-active'));
             if(document.getElementById(`btn-${id}`)) document.getElementById(`btn-${id}`).classList.add('nav-btn-active');
             
-            if(window.innerWidth < 768) { document.body.classList.add('sidebar-collapsed'); }
+            if(window.innerWidth < 768) { document.body.classList.remove('sidebar-open'); }
 
-            fullUIRender(id);
+            window.fullUIRender(id);
         }
         window.nav = nav;
 
@@ -702,15 +829,15 @@
             const tId = targetId || Array.from(document.querySelectorAll('.page-view')).find(el => !el.classList.contains('hidden'))?.id.replace('view-', '');
             if(!tId) return;
             
-            if(tId === 'dashboard') renderDash();
-            if(tId === 'journal') renderJournal();
-            if(tId === 'staff') renderStaff();
+            if(tId === 'dashboard') window.renderDash();
+            if(tId === 'journal') window.renderJournal();
+            if(tId === 'staff') window.renderStaff();
             if(tId === 'payroll') {
                 if(!window.isDistributing && !window.isEnvelopesShow) {
                     document.getElementById('payroll-header-controls').classList.remove('hidden');
-                    resetDistribution();
+                    window.resetDistribution();
                 } else if (window.isDistributing) {
-                    renderDistList();
+                    window.renderDistList();
                 }
             }
             if(window.lucide) window.lucide.createIcons();
@@ -760,8 +887,8 @@
             const mp = getMonthlyPayroll(mkey);
             
             document.getElementById('cash-expected-total').value = mp.expected === 0 ? '' : mp.expected;
-            renderCashTable();
-            validateCashMatch();
+            window.renderCashTable();
+            window.validateCashMatch();
 
             const m = window.state.payDate.getMonth(), y = window.state.payDate.getFullYear();
             document.getElementById('pay-date-display').innerText = window.state.payDate.toLocaleString(window.currentLang === 'ar' ? 'ar-EG' : 'en-US', { month: 'long', year: 'numeric' });
@@ -772,8 +899,8 @@
             const mkey = getMonthKey(window.state.payDate);
             const mp = getMonthlyPayroll(mkey);
             mp.expected = val === '' ? '' : parseInt(val) || 0;
-            localSave();
-            validateCashMatch();
+            window.localSave();
+            window.validateCashMatch();
         }
         window.handleCashExpected = handleCashExpected;
 
@@ -781,7 +908,7 @@
             const mkey = getMonthKey(window.state.payDate);
             const mp = getMonthlyPayroll(mkey);
             mp.cash[note] = val === '' ? '' : parseInt(val) || 0;
-            localSave();
+            window.localSave();
             
             const qty = mp.cash[note] || 0;
             const total = qty * note;
@@ -791,7 +918,7 @@
             [200, 100, 50, 20, 10, 5].forEach(n => gTotal += (mp.cash[n] || 0) * n);
             document.getElementById('cash-grand-total').innerText = `${fmt(gTotal)} EGP`;
             
-            validateCashMatch();
+            window.validateCashMatch();
         }
         window.handleCashInput = handleCashInput;
 
@@ -816,8 +943,8 @@
             });
             
             document.getElementById('cash-expected-total').value = mp.expected || '';
-            document.getElementById('cash-grand-total').innerText = `${fmt(getCashSum())} EGP`;
-            validateCashMatch();
+            document.getElementById('cash-grand-total').innerText = `${fmt(window.getCashSum())} EGP`;
+            window.validateCashMatch();
         }
         window.renderCashTable = renderCashTable;
 
@@ -826,7 +953,7 @@
             const mp = getMonthlyPayroll(mkey);
             const expStr = mp.expected;
             const exp = parseInt(expStr) || 0;
-            const act = getCashSum();
+            const act = window.getCashSum();
             const msgEl = document.getElementById('cash-validation-msg');
             if(!msgEl) return;
             
@@ -853,11 +980,11 @@
         window.validateCashMatch = validateCashMatch;
 
         function validateAndStartDistributing() {
-            if(getCashSum() === 0) {
-                customAlert(window.t('errMatch'));
+            if(window.getCashSum() === 0) {
+                window.customAlert(window.t('errMatch'));
                 return;
             }
-            startDistributing();
+            window.startDistributing();
         }
         window.validateAndStartDistributing = validateAndStartDistributing;
 
@@ -888,8 +1015,8 @@
                 mp.customPayees = merged;
             }
             
-            localSave();
-            renderDistList();
+            window.localSave();
+            window.renderDistList();
         }
         window.startDistributing = startDistributing;
 
@@ -917,7 +1044,7 @@
                 </div>
             `}).join('');
             
-            updateDistTotals();
+            window.updateDistTotals();
             if(window.lucide) window.lucide.createIcons();
         }
         window.renderDistList = renderDistList;
@@ -931,43 +1058,43 @@
                 const u = window.state.users.find(x => x.id === p.id);
                 if(u) { u.fname = val; u.lname = ''; }
             }
-            localSave();
+            window.localSave();
         }
         window.updatePayeeName = updatePayeeName;
 
         function toggleLabelEdit(idx) {
             const mkey = getMonthKey(window.state.payDate);
             window.state.monthlyPayroll[mkey].customPayees[idx].editing = true;
-            renderDistList();
+            window.renderDistList();
         }
         window.toggleLabelEdit = toggleLabelEdit;
 
         function closeLabelEdit(idx) {
             const mkey = getMonthKey(window.state.payDate);
             window.state.monthlyPayroll[mkey].customPayees[idx].editing = false;
-            localSave();
-            renderDistList();
+            window.localSave();
+            window.renderDistList();
         }
         window.closeLabelEdit = closeLabelEdit;
 
         function updateDistTotalsOnly(idx, val) {
             const mkey = getMonthKey(window.state.payDate);
             window.state.monthlyPayroll[mkey].customPayees[idx].amount = val === '' ? '' : (parseInt(val) || 0);
-            updateDistTotals();
+            window.updateDistTotals();
         }
         window.updateDistTotalsOnly = updateDistTotalsOnly;
 
         function updatePayeeAmtSync(idx, val) {
-            updateDistTotalsOnly(idx, val);
-            localSave();
+            window.updateDistTotalsOnly(idx, val);
+            window.localSave();
         }
         window.updatePayeeAmtSync = updatePayeeAmtSync;
 
         function updateDistTotals() {
             const mkey = getMonthKey(window.state.payDate);
-            const mp = getMonthlyPayroll(mkey);
+            const mp = window.getMonthlyPayroll(mkey);
             const sum = mp.customPayees.reduce((acc, p) => acc + (p.amount || 0), 0);
-            const avail = getCashSum();
+            const avail = window.getCashSum();
             
             let color = sum > avail ? 'text-red-600' : 'text-emerald-600';
             document.getElementById('dist-totals-info').innerHTML = `
@@ -984,39 +1111,39 @@
             window.state.users.push({ id: newId, title: '', fname: newName, lname: '', role: 'counselor' });
             window.state.monthlyPayroll[mkey].customPayees.push({ id: newId, name: newName, amount: 0, editing: true });
             
-            localSave();
-            renderDistList();
+            window.localSave();
+            window.renderDistList();
         }
         window.addCustomPayee = addCustomPayee;
 
         function removePayee(idx) {
             const mkey = getMonthKey(window.state.payDate);
             window.state.monthlyPayroll[mkey].customPayees.splice(idx, 1);
-            localSave();
-            renderDistList();
+            window.localSave();
+            window.renderDistList();
         }
         window.removePayee = removePayee;
 
         function showEnvelopesCheck() {
             const mkey = getMonthKey(window.state.payDate);
-            const mp = getMonthlyPayroll(mkey);
+            const mp = window.getMonthlyPayroll(mkey);
             const sumAssigned = mp.customPayees.reduce((acc, p) => acc + (p.amount || 0), 0);
-            const available = getCashSum();
+            const available = window.getCashSum();
 
             if (sumAssigned > available) {
-                customAlert(window.t('warn_assign'));
+                window.customAlert(window.t('warn_assign'));
                 return;
             }
 
             if (sumAssigned < available) {
                 const diff = available - sumAssigned;
-                customConfirm(`${fmt(diff)} ${window.t('warn_left')}`, () => {
-                    showEnvelopesReal();
+                window.customConfirm(`${fmt(diff)} ${window.t('warn_left')}`, () => {
+                    window.showEnvelopesReal();
                 });
                 return;
             }
 
-            showEnvelopesReal();
+            window.showEnvelopesReal();
         }
         window.showEnvelopesCheck = showEnvelopesCheck;
 
@@ -1027,7 +1154,7 @@
             results.classList.remove('hidden');
 
             const mkey = getMonthKey(window.state.payDate);
-            const mp = getMonthlyPayroll(mkey);
+            const mp = window.getMonthlyPayroll(mkey);
             const notes = [200, 100, 50, 20, 10, 5];
             
             let inv = {};
@@ -1086,22 +1213,18 @@
         }
         window.showEnvelopesReal = showEnvelopesReal;
 
-        function renderDash() {
+        window.renderDash = function() {
             const m = window.state.dashDate.getMonth(), y = window.state.dashDate.getFullYear();
             document.getElementById('dash-date-display').innerText = window.state.dashDate.toLocaleString(window.currentLang==='ar'?'ar-EG':'en-US', { month: 'long', year: 'numeric' });
             const monthLogs = window.state.sessions.filter(s => { const d = new Date(s.date); return d.getMonth() === m && d.getFullYear() === y && s.verified === true; });
             document.getElementById('stat-total').innerText = fmt(monthLogs.reduce((acc, s) => acc + s.price, 0)) + " EGP";
             document.getElementById('stat-center').innerText = fmt(monthLogs.reduce((acc, s) => acc + s.center, 0)) + " EGP";
             document.getElementById('stat-counselors').innerText = fmt(monthLogs.reduce((acc, s) => acc + s.staff, 0)) + " EGP";
-        }
-        window.renderDash = renderDash;
+        };
 
-        function setJournalTab(t) { window.state.journalTab = t; renderJournal(); }
-        window.setJournalTab = setJournalTab;
+        window.setJournalTab = function(t) { window.state.journalTab = t; window.renderJournal(); };
 
-        function hasArabic(text) { return /[\u0600-\u06FF]/.test(text); }
-
-        function renderJournal() {
+        window.renderJournal = function() {
             const list = document.getElementById('journal-list');
             document.getElementById('journ-date-display').innerText = window.state.journDate.toLocaleString(window.currentLang==='ar'?'ar-EG':'en-US', { month: 'long', year: 'numeric' });
             document.querySelectorAll('#view-journal button[id^="tab-"]').forEach(btn => btn.classList.remove('tab-btn-active'));
@@ -1110,7 +1233,7 @@
             const m = window.state.journDate.getMonth(), y = window.state.journDate.getFullYear();
             let display = [];
             if(window.state.journalTab === 'flagged') display = window.state.sessions.filter(s => s.isFlagged);
-            else if(window.state.journalTab === 'trans') display = window.state.sessions.filter(s => hasArabic(s.client));
+            else if(window.state.journalTab === 'trans') display = window.state.sessions.filter(s => /[\u0600-\u06FF]/.test(s.client));
             else display = window.state.sessions.filter(s => s.verified);
             
             const filtered = display.filter(s => { const d = new Date(s.date); return d.getMonth() === m && d.getFullYear() === y; });
@@ -1122,23 +1245,20 @@
             document.getElementById('metric-clients').innerText = fmt(filtered.length);
             document.getElementById('metric-counselors').innerText = fmt(new Set(filtered.map(s => s.uid)).size);
             updateReviewCount();
-        }
-        window.renderJournal = renderJournal;
+        };
 
-        function renderStaff() {
+        window.renderStaff = function() {
             document.getElementById('staff-list').innerHTML = window.state.users.map(u => `<tr><td class="px-6 py-4 font-bold">${u.title}</td><td class="px-6 py-4 text-brand font-black">${u.fname}</td><td class="px-6 py-4">${u.lname}</td><td class="px-6 py-4 uppercase text-[10px] font-black">${u.role}</td><td class="px-6 py-4"><button onclick="editItem('staff', '${u.id}')" class="text-xs font-black text-brand uppercase underline">Edit</button></td></tr>`).join('');
-        }
-        window.renderStaff = renderStaff;
+        };
 
-        function openAddStaff() {
+        window.openAddStaff = function() {
             window.state.editingId = null; window.state.editingType = 'staff';
             const body = document.getElementById('modal-body');
             body.innerHTML = `<label class="text-[10px] font-black text-slate-400 uppercase">${window.t('s_title')}</label><input type="text" id="edit-title" class="w-full p-3 bg-slate-50 rounded-xl mb-2" onkeydown="if(event.key==='Enter') this.blur();"><label class="text-[10px] font-black text-slate-400 uppercase">${window.t('s_first')}</label><input type="text" id="edit-fname" class="w-full p-3 bg-slate-50 rounded-xl mb-2" onkeydown="if(event.key==='Enter') this.blur();"><label class="text-[10px] font-black text-slate-400 uppercase">${window.t('s_last')}</label><input type="text" id="edit-lname" class="w-full p-3 bg-slate-50 rounded-xl" onkeydown="if(event.key==='Enter') this.blur();">`;
             document.getElementById('modal-edit').classList.add('active');
-        }
-        window.openAddStaff = openAddStaff;
+        };
 
-        function openAddSession() {
+        window.openAddSession = function() {
             window.state.editingId = null; window.state.editingType = 'session';
             const body = document.getElementById('modal-body');
             const counselorOptions = window.state.users.map(u => `<option value="${u.id}">${u.title} ${u.fname} ${u.lname}</option>`).join('');
@@ -1155,10 +1275,9 @@
                 <input type="number" id="edit-staff" class="w-full p-3 bg-slate-50 rounded-xl" value="250" onkeydown="if(event.key==='Enter') this.blur();">
             `;
             document.getElementById('modal-edit').classList.add('active');
-        }
-        window.openAddSession = openAddSession;
+        };
 
-        function editItem(type, id) {
+        window.editItem = function(type, id) {
             window.state.editingId = id; window.state.editingType = type;
             const body = document.getElementById('modal-body');
             if(type === 'session') {
@@ -1183,10 +1302,9 @@
                 body.innerHTML = `<label class="text-[10px] font-black text-slate-400 uppercase">${window.t('s_title')}</label><input type="text" id="edit-title" class="w-full p-3 bg-slate-50 rounded-xl mb-2" value="${u.title}" onkeydown="if(event.key==='Enter') this.blur();"><label class="text-[10px] font-black text-slate-400 uppercase">${window.t('s_first')}</label><input type="text" id="edit-fname" class="w-full p-3 bg-slate-50 rounded-xl mb-2" value="${u.fname}" onkeydown="if(event.key==='Enter') this.blur();"><label class="text-[10px] font-black text-slate-400 uppercase">${window.t('s_last')}</label><input type="text" id="edit-lname" class="w-full p-3 bg-slate-50 rounded-xl" value="${u.lname}" onkeydown="if(event.key==='Enter') this.blur();">`;
             }
             document.getElementById('modal-edit').classList.add('active');
-        }
-        window.editItem = editItem;
+        };
 
-        function submitEdit() {
+        window.submitEdit = function() {
             if(window.state.editingType === 'reset') {
                 localStorage.removeItem(STORAGE_KEY);
                 location.reload();
@@ -1214,21 +1332,18 @@
                     window.state.users.push({ id: 'u-'+Math.random().toString(36).substr(2,9), title: document.getElementById('edit-title').value, fname: document.getElementById('edit-fname').value, lname: document.getElementById('edit-lname').value, role: 'counselor' });
                 }
             }
-            localSave(); closeModal(); fullUIRender();
-        }
-        window.submitEdit = submitEdit;
+            window.localSave(); window.closeModal(); window.fullUIRender();
+        };
 
-        function closeModal() { document.getElementById('modal-edit').classList.remove('active'); }
-        window.closeModal = closeModal;
+        window.closeModal = function() { document.getElementById('modal-edit').classList.remove('active'); };
         
-        function adjDate(v, type) {
+        window.adjDate = function(v, type) {
             const target = type === 'dash' ? 'dashDate' : (type === 'pay' ? 'payDate' : 'journDate');
             window.state[target].setMonth(window.state[target].getMonth() + v);
-            fullUIRender();
-        }
-        window.adjDate = adjDate;
+            window.fullUIRender();
+        };
 
-        function exportJSON() {
+        window.exportJSON = function() {
             const dataStr = JSON.stringify(window.state, null, 2);
             const blob = new Blob([dataStr], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
@@ -1236,10 +1351,9 @@
             a.href = url;
             a.download = `nlcc_backup.json`;
             a.click();
-        }
-        window.exportJSON = exportJSON;
+        };
 
-        function importJSON(event) {
+        window.importJSON = function(event) {
             const file = event.target.files[0];
             if (!file) return;
             const reader = new FileReader();
@@ -1248,14 +1362,13 @@
                 if(window.state.dashDate) window.state.dashDate = new Date(window.state.dashDate);
                 if(window.state.payDate) window.state.payDate = new Date(window.state.payDate);
                 if(window.state.journDate) window.state.journDate = new Date(window.state.journDate);
-                localSave();
+                window.localSave();
                 location.reload();
             };
             reader.readAsText(file);
-        }
-        window.importJSON = importJSON;
+        };
 
-        function exportMasterExcel() {
+        window.exportMasterExcel = function() {
             const m = window.state.payDate.getMonth(), y = window.state.payDate.getFullYear();
             const data = window.state.users.map(u => {
                 const logs = window.state.sessions.filter(s => {
@@ -1276,10 +1389,9 @@
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Master Payroll");
             XLSX.writeFile(wb, `Master_Payroll_${window.state.payDate.toLocaleString('en-US', { month: 'short', year: 'numeric' })}.xlsx`);
-        }
-        window.exportMasterExcel = exportMasterExcel;
+        };
 
-        function exportMasterPDF() {
+        window.exportMasterPDF = function() {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
             const m = window.state.payDate.getMonth(), y = window.state.payDate.getFullYear();
@@ -1310,10 +1422,9 @@
             });
 
             doc.save(`Master_Report_${window.state.payDate.toLocaleString('en-US', { month: 'short', year: 'numeric' })}.pdf`);
-        }
-        window.exportMasterPDF = exportMasterPDF;
+        };
 
-        function exportCounselorExcel(uid) {
+        window.exportCounselorExcel = function(uid) {
             const u = window.state.users.find(x => x.id === uid);
             const m = window.state.payDate.getMonth(), y = window.state.payDate.getFullYear();
             const logs = window.state.sessions.filter(s => {
@@ -1330,10 +1441,9 @@
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Sessions");
             XLSX.writeFile(wb, `${u.title} ${u.fname} ${u.lname} ${window.state.payDate.toLocaleString('en-US', { month: 'short', year: 'numeric' }).replace(/\s+/g, '')} Statement.xlsx`);
-        }
-        window.exportCounselorExcel = exportCounselorExcel;
+        };
 
-        function exportCounselorPDF(uid) {
+        window.exportCounselorPDF = function(uid) {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
             const u = window.state.users.find(x => x.id === uid);
@@ -1381,8 +1491,7 @@
             doc.setFontSize(14); doc.text(`${totalPayout.toLocaleString()} EGP`, 135, finalY + 11);
 
             doc.save(`${u.title} ${u.fname} ${u.lname} ${window.state.payDate.toLocaleString('en-US', { month: 'short', year: 'numeric' }).replace(/\s+/g, '')} Statement.pdf`);
-        }
-        window.exportCounselorPDF = exportCounselorPDF;
+        };
 
         function translateName(text) {
             if(!text) return "";
@@ -1391,7 +1500,7 @@
             return result;
         }
 
-        function handleExcelImport(event) {
+        window.handleExcelImport = function(event) {
             const file = event.target.files[0];
             if(!file) return;
             const reader = new FileReader();
@@ -1426,12 +1535,11 @@
                     newSessions.push({ id: 's-' + Math.random().toString(36).substr(2, 9), uid: user.id, date: sessionDate, client: translateName(clientRaw), price: totalFee, center: totalFee - staffShare, staff: staffShare, verified: totalFee === 350, isFlagged: totalFee !== 350 });
                 }
                 window.state.sessions = [...newSessions, ...window.state.sessions];
-                localSave();
-                nav('dashboard');
+                window.localSave();
+                window.nav('dashboard');
             };
             reader.readAsArrayBuffer(file);
-        }
-        window.handleExcelImport = handleExcelImport;
+        };
     </script>
 </body>
 </html>
