@@ -1,0 +1,1464 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NLCC - Director's Management Suite</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    
+    <style>
+        :root { --brand-green: #064e3b; --brand-light: #ecfdf5; }
+        .bg-brand { background-color: var(--brand-green); }
+        .text-brand { color: var(--brand-green); }
+        .nav-btn-active { background-color: #f1f5f9; color: #064e3b !important; border-inline-start-width: 4px; border-inline-start-color: var(--brand-green); }
+        .tab-btn-active { border-bottom: 3px solid var(--brand-green); color: var(--brand-green) !important; font-weight: 900; }
+        .table-container { overflow-x: auto; border-radius: 1rem; border: 1px solid #e2e8f0; background: white; }
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 9999; align-items: center; justify-content: center; padding: 1rem; backdrop-filter: blur(4px); }
+        .modal.active { display: flex; }
+        .status-pill { padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 900; text-transform: uppercase; }
+        .status-verified { background: #dcfce7; color: #166534; }
+        .status-review { background: #fee2e2; color: #991b1b; }
+        input, select { outline: none; transition: border-color 0.2s; border: 1px solid #e2e8f0; }
+        input:focus, select:focus { border-color: var(--brand-green) !important; }
+        
+        /* Layout modes */
+        body.mode-distribute #sidebar { display: none !important; }
+        body.mode-distribute #main-content { margin-left: 0 !important; width: 100% !important; max-width: 1200px; margin: 0 auto; }
+        body.mode-distribute #header-menu-btn { display: none !important; }
+
+        body.mode-full #sidebar { display: flex; }
+        body.mode-full #main-content { margin-left: 16rem; }
+        body.sidebar-collapsed #sidebar { transform: translateX(-100%); }
+        body.sidebar-collapsed #main-content { margin-left: 0; }
+        [dir="rtl"] body.sidebar-collapsed #sidebar { transform: translateX(100%); }
+        [dir="rtl"] body.mode-full #main-content { margin-left: 0; margin-right: 16rem; }
+        [dir="rtl"] body.sidebar-collapsed #main-content { margin-right: 0; }
+        
+        #entry-overlay { position: fixed; inset: 0; background: var(--brand-green); z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        
+        /* RTL Support */
+        [dir="rtl"] .text-left { text-align: right; }
+        [dir="rtl"] .text-right { text-align: left; }
+        [dir="rtl"] .ml-2 { margin-left: 0; margin-right: 0.5rem; }
+        [dir="rtl"] .mr-2 { margin-right: 0; margin-left: 0.5rem; }
+        [dir="rtl"] .ml-64 { margin-left: 0; margin-right: 16rem; }
+    </style>
+</head>
+<body class="bg-[#f8fafc] min-h-screen font-sans text-slate-800 flex overflow-hidden">
+
+    <!-- App Entry Screen -->
+    <div id="entry-overlay">
+        <div class="bg-white p-10 rounded-[2rem] shadow-2xl flex flex-col items-center max-w-lg w-full text-center mx-4">
+            <div class="w-20 h-20 bg-emerald-50 rounded-2xl flex items-center justify-center text-brand font-black italic text-2xl mb-6 shadow-inner">NL</div>
+            <h1 class="text-2xl font-black text-brand uppercase mb-2" data-i18n="welcome">Welcome to NLCC</h1>
+            <p class="text-slate-400 text-sm font-bold uppercase mb-8" data-i18n="select_mode">Select your operating mode</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
+                <button onclick="initMode('distribute')" class="bg-emerald-50 border-2 border-emerald-100 text-brand p-6 rounded-2xl flex flex-col items-center hover:bg-emerald-100 transition-colors group">
+                    <i data-lucide="wallet" class="w-8 h-8 mb-3 text-emerald-600 group-hover:scale-110 transition-transform"></i>
+                    <span class="font-black uppercase text-sm" data-i18n="distribute">Distribute</span>
+                    <span class="text-[10px] text-slate-500 mt-2 font-bold uppercase text-center" data-i18n="cash_only">Cash Breakdown Only</span>
+                </button>
+                <button onclick="initMode('full')" class="bg-brand border-2 border-brand text-white p-6 rounded-2xl flex flex-col items-center hover:opacity-90 transition-colors group shadow-xl shadow-brand/20">
+                    <i data-lucide="layout-dashboard" class="w-8 h-8 mb-3 text-emerald-300 group-hover:scale-110 transition-transform"></i>
+                    <span class="font-black uppercase text-sm" data-i18n="full_version">Full Version</span>
+                    <span class="text-[10px] text-emerald-100 mt-2 font-bold uppercase text-center" data-i18n="comp_mgt">Complete Management</span>
+                </button>
+            </div>
+            <div class="mt-6 flex justify-center w-full">
+                <button onclick="toggleLang()" class="bg-slate-100 text-slate-600 px-4 py-2 rounded-xl text-xs font-black uppercase hover:bg-slate-200 transition-colors flex items-center gap-2">
+                    <i data-lucide="globe" class="w-4 h-4"></i> <span id="lang-ind-entry">AR</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar Navigation -->
+    <aside id="sidebar" class="fixed inset-y-0 start-0 bg-white w-64 shadow-xl z-40 transition-transform flex flex-col border-e border-slate-100">
+        <div class="p-6 border-b border-slate-100 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div id="logo-container" class="shrink-0">
+                    <div id="default-logo" class="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center text-brand font-black italic shadow-inner">NL</div>
+                </div>
+                <div class="overflow-hidden">
+                    <h2 id="display-center-name" class="text-sm font-black text-brand leading-none uppercase truncate">NEW LIFE</h2>
+                    <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest" data-i18n="director">Director</span>
+                </div>
+            </div>
+            <button onclick="toggleSidebar()" class="md:hidden text-slate-400 hover:text-brand"><i data-lucide="x" class="w-5 h-5"></i></button>
+        </div>
+        
+        <nav class="flex-1 p-4 space-y-2 overflow-y-auto" id="main-nav">
+            <button onclick="nav('dashboard')" id="btn-dashboard" class="w-full flex items-center gap-3 px-4 py-3 text-xs font-black uppercase text-slate-500 hover:bg-slate-50 hover:text-brand rounded-xl transition-all"><i data-lucide="bar-chart-2" class="w-4 h-4"></i> <span data-i18n="nav_stats">Stats</span></button>
+            <button onclick="nav('journal')" id="btn-journal" class="w-full flex items-center gap-3 px-4 py-3 text-xs font-black uppercase text-slate-500 hover:bg-slate-50 hover:text-brand rounded-xl transition-all"><i data-lucide="book-open" class="w-4 h-4"></i> <span data-i18n="nav_journal">Journal</span></button>
+            <button onclick="nav('payroll')" id="btn-payroll" class="w-full flex items-center gap-3 px-4 py-3 text-xs font-black uppercase text-slate-500 hover:bg-slate-50 hover:text-brand rounded-xl transition-all"><i data-lucide="wallet" class="w-4 h-4"></i> <span data-i18n="nav_payroll">Payroll</span></button>
+            <button onclick="nav('staff')" id="btn-staff" class="w-full flex items-center gap-3 px-4 py-3 text-xs font-black uppercase text-slate-500 hover:bg-slate-50 hover:text-brand rounded-xl transition-all"><i data-lucide="users" class="w-4 h-4"></i> <span data-i18n="nav_staff">Staff</span></button>
+            <button onclick="nav('admin')" id="btn-admin" class="w-full flex items-center gap-3 px-4 py-3 text-xs font-black uppercase text-slate-500 hover:bg-slate-50 hover:text-brand rounded-xl transition-all"><i data-lucide="settings" class="w-4 h-4"></i> <span data-i18n="nav_admin">Admin</span></button>
+        </nav>
+
+        <div class="p-4 border-t border-slate-100 flex flex-col gap-2">
+            <button onclick="document.getElementById('excel-input').click()" class="w-full bg-brand text-white px-4 py-3 rounded-xl font-black text-[10px] uppercase shadow-lg shadow-brand/20 flex items-center justify-center gap-2 hover:opacity-90 transition-opacity">
+                <i data-lucide="upload-cloud" class="w-4 h-4"></i> <span data-i18n="bulk_sync">Bulk Sync</span>
+            </button>
+            <input type="file" id="excel-input" class="hidden" accept=".xlsx, .xls, .csv" onchange="handleExcelImport(event)">
+            
+            <button onclick="logout()" class="w-full bg-red-50 text-red-600 px-4 py-3 rounded-xl font-black text-[10px] uppercase flex items-center justify-center gap-2 hover:bg-red-100 transition-colors border border-red-100">
+                <i data-lucide="log-out" class="w-4 h-4"></i> <span data-i18n="logout">Log Out</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <div id="main-content" class="flex-1 flex flex-col h-screen overflow-y-auto transition-all">
+        <header class="bg-white border-b border-slate-100 sticky top-0 z-30 px-6 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <button onclick="toggleSidebar()" id="header-menu-btn" class="text-slate-600 hover:text-brand bg-slate-50 p-2 rounded-lg"><i data-lucide="menu" class="w-5 h-5"></i></button>
+                <h2 class="text-sm font-black text-brand uppercase truncate md:hidden" id="mobile-title">NEW LIFE</h2>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <div id="firebase-status" class="hidden md:flex p-2 bg-slate-50 rounded-xl items-center gap-2 text-[10px] font-black uppercase text-slate-500">
+                    <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Checking DB...
+                </div>
+                <button onclick="toggleLang()" class="bg-slate-50 border border-slate-200 text-slate-600 px-3 py-2 rounded-xl text-[12px] hover:bg-slate-100 shadow-sm transition-all flex items-center justify-center font-black gap-2" title="Toggle Language">
+                    <i data-lucide="globe" class="w-4 h-4"></i> <span id="lang-ind-main">AR</span>
+                </button>
+                <button id="header-logout-btn" onclick="logout()" class="hidden bg-red-50 text-red-600 px-3 py-2 rounded-xl text-[10px] font-black uppercase hover:bg-red-100 transition-colors border border-red-100 items-center gap-2">
+                    <i data-lucide="log-out" class="w-4 h-4"></i> <span data-i18n="logout">Log Out</span>
+                </button>
+            </div>
+        </header>
+
+        <main class="w-full p-4 md:p-6 space-y-8 flex-1 max-w-6xl mx-auto">
+            
+            <!-- Stats Dashboard -->
+            <section id="view-dashboard" class="page-view space-y-6">
+                <div class="flex items-center justify-between">
+                    <div class="flex flex-col">
+                        <h2 class="text-xl font-black text-brand uppercase leading-tight" data-i18n="dash_title">Verified Financials</h2>
+                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-tight" data-i18n="dash_desc">Confirmed Revenue Summary</p>
+                    </div>
+                    <div class="flex items-center bg-white px-3 py-1 rounded-xl border border-slate-100 shadow-sm" dir="ltr">
+                        <button onclick="adjDate(-1, 'dash')" class="p-1"><i data-lucide="chevron-left" class="w-4 h-4 text-slate-400"></i></button>
+                        <span id="dash-date-display" class="px-4 font-black text-brand text-xs min-w-[140px] text-center">Month Year</span>
+                        <button onclick="adjDate(1, 'dash')" class="p-1"><i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i></button>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
+                        <p class="text-[10px] font-black text-slate-400 uppercase mb-2" data-i18n="stat_collected">Total Verified Collected</p>
+                        <h3 id="stat-total" class="text-4xl font-black text-slate-700">0</h3>
+                    </div>
+                    <div class="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
+                        <p class="text-[10px] font-black text-slate-400 uppercase mb-2" data-i18n="stat_center">Verified Center Share</p>
+                        <h3 id="stat-center" class="text-4xl font-black text-brand">0</h3>
+                    </div>
+                    <div class="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
+                        <p class="text-[10px] font-black text-slate-400 uppercase mb-2" data-i18n="stat_staff">Verified Staff Payouts</p>
+                        <h3 id="stat-counselors" class="text-4xl font-black text-emerald-600">0</h3>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Journal View -->
+            <section id="view-journal" class="page-view hidden space-y-4">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-slate-200 gap-4">
+                    <div class="flex gap-4 overflow-x-auto w-full md:w-auto pb-1">
+                        <button id="tab-all" onclick="setJournalTab('all')" class="pb-3 text-xs font-black uppercase text-slate-400 transition-all hover:text-brand tab-btn-active whitespace-nowrap" data-i18n="tab_ver">Verified Logs</button>
+                        <button id="tab-flagged" onclick="setJournalTab('flagged')" class="pb-3 text-xs font-black uppercase text-slate-400 transition-all hover:text-brand flex items-center gap-2 whitespace-nowrap">
+                            <span data-i18n="tab_rev">Needs Review</span> <span id="flag-count" class="bg-red-500 text-white px-2 py-0.5 rounded-full text-[10px] font-black">0</span>
+                        </button>
+                        <button id="tab-trans" onclick="setJournalTab('trans')" class="pb-3 text-xs font-black uppercase text-slate-400 transition-all hover:text-brand whitespace-nowrap" data-i18n="tab_trans">Translations</button>
+                    </div>
+                    
+                    <div class="flex items-center gap-3 mb-2 shrink-0">
+                        <button onclick="openAddSession()" class="bg-brand text-white px-3 py-1.5 rounded-xl text-[10px] font-black uppercase shadow-sm flex items-center gap-1.5 hover:opacity-90">
+                            <i data-lucide="plus" class="w-3.5 h-3.5"></i> <span data-i18n="btn_manual">Manual Entry</span>
+                        </button>
+                        <div class="flex items-center bg-white px-3 py-1 rounded-xl border border-slate-100 shadow-sm" dir="ltr">
+                            <button onclick="adjDate(-1, 'journ')" class="p-1"><i data-lucide="chevron-left" class="w-4 h-4 text-slate-400"></i></button>
+                            <span id="journ-date-display" class="px-4 font-black text-brand text-[10px] uppercase min-w-[120px] text-center tracking-tighter">Month Year</span>
+                            <button onclick="adjDate(1, 'journ')" class="p-1"><i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex gap-4 items-center bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="users" class="w-4 h-4 text-brand"></i>
+                        <span class="text-[10px] font-black text-slate-400 uppercase" data-i18n="lbl_clients">Clients:</span>
+                        <span id="metric-clients" class="text-xs font-black text-brand">0</span>
+                    </div>
+                    <div class="w-px h-4 bg-slate-200"></div>
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="user-check" class="w-4 h-4 text-brand"></i>
+                        <span class="text-[10px] font-black text-slate-400 uppercase" data-i18n="lbl_couns">Counselors:</span>
+                        <span id="metric-counselors" class="text-xs font-black text-brand">0</span>
+                    </div>
+                </div>
+
+                <div id="journal-table-container" class="table-container">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-slate-50 border-b border-slate-100">
+                            <tr>
+                                <th class="px-4 py-4 text-[10px] font-black uppercase text-slate-400" data-i18n="col_date">Date</th>
+                                <th class="px-4 py-4 text-[10px] font-black uppercase text-slate-400" data-i18n="col_counselor">Counselor</th>
+                                <th class="px-4 py-4 text-[10px] font-black uppercase text-slate-400" data-i18n="col_client">Client</th>
+                                <th class="px-4 py-4 text-[10px] font-black uppercase text-slate-400 text-right" data-i18n="col_fee">Fee</th>
+                                <th class="px-4 py-4 text-[10px] font-black uppercase text-slate-400 text-right" data-i18n="col_center">Center</th>
+                                <th class="px-4 py-4 text-[10px] font-black uppercase text-slate-400 text-right" data-i18n="col_staff">Staff</th>
+                                <th class="px-4 py-4 text-[10px] font-black uppercase text-slate-400" data-i18n="col_status">Status</th>
+                                <th class="px-4 py-4 text-[10px] font-black uppercase text-slate-400" data-i18n="col_act">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="journal-list" class="divide-y divide-slate-50 text-sm"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Payroll View -->
+            <section id="view-payroll" class="page-view hidden space-y-6">
+                
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4" id="payroll-header-controls">
+                    <div>
+                        <h2 class="text-xl font-black text-brand uppercase" data-i18n="pay_title">Verified Payroll</h2>
+                        <div class="flex gap-2 mt-2">
+                            <button onclick="exportMasterExcel()" class="flex items-center gap-2 text-[10px] font-black text-brand uppercase bg-emerald-50 px-3 py-2 rounded-lg hover:bg-emerald-100 transition-colors">
+                                <i data-lucide="file-spreadsheet" class="w-4 h-4"></i> <span data-i18n="btn_m_ex">Master Excel</span>
+                            </button>
+                            <button onclick="exportMasterPDF()" class="flex items-center gap-2 text-[10px] font-black text-brand uppercase bg-emerald-50 px-3 py-2 rounded-lg hover:bg-emerald-100 transition-colors">
+                                <i data-lucide="file-text" class="w-4 h-4"></i> <span data-i18n="btn_m_pd">Master PDF</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="flex items-center bg-white px-3 py-1 rounded-xl border border-slate-100 shadow-sm" dir="ltr">
+                        <button onclick="adjDate(-1, 'pay')" class="p-1"><i data-lucide="chevron-left" class="w-4 h-4 text-slate-400"></i></button>
+                        <span id="pay-date-display" class="px-4 font-black text-brand text-xs min-w-[140px] text-center">Month Year</span>
+                        <button onclick="adjDate(1, 'pay')" class="p-1"><i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i></button>
+                    </div>
+                </div>
+
+                <!-- Cash Setup System (Excel Style) -->
+                <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm mb-6">
+                    <h3 class="text-lg font-black text-brand uppercase mb-4" data-i18n="cash_setup">Cash Setup</h3>
+                    
+                    <div class="mb-4">
+                        <label class="block mb-2">
+                            <span class="text-[10px] font-black text-slate-400 uppercase" data-i18n="expected_tot">Total Expected Amount</span>
+                        </label>
+                        <div class="flex items-center gap-2 w-full max-w-sm">
+                            <input type="number" id="cash-expected-total" placeholder="0" class="flex-1 p-3 bg-slate-50 border border-slate-200 rounded-xl text-lg font-black text-brand text-right focus:ring-2 focus:ring-brand outline-none" onkeydown="if(event.key==='Enter') this.blur();">
+                            <span class="text-[10px] font-black text-slate-400 uppercase">EGP</span>
+                        </div>
+                    </div>
+
+                    <div class="table-container mb-4">
+                        <table class="w-full text-left">
+                            <thead class="bg-slate-50 border-b border-slate-100">
+                                <tr>
+                                    <th class="px-6 py-3 text-[10px] font-black uppercase text-slate-400" data-i18n="paper_val">Paper Value</th>
+                                    <th class="px-6 py-3 text-[10px] font-black uppercase text-slate-400" data-i18n="qty_avail">Quantity Available</th>
+                                    <th class="px-6 py-3 text-[10px] font-black uppercase text-slate-400 text-right" data-i18n="tot_amt">Total Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody id="cash-inventory-body" class="divide-y divide-slate-50 text-sm">
+                                <!-- Generated by JS via DOM to prevent focus loss -->
+                                <tr id="row-200"><td class="px-6 py-3 font-black text-slate-700">200 <span class="text-[10px] text-slate-400 uppercase">EGP</span></td><td class="px-6 py-3"><input type="number" min="0" id="input-200" oninput="handleCashInput(200, this.value)" onkeydown="if(event.key==='Enter') this.blur();" class="w-full max-w-[120px] p-2 bg-white border border-slate-200 rounded-lg text-sm font-black text-center focus:ring-2 focus:ring-brand outline-none"></td><td id="tot-200" class="px-6 py-3 text-right font-black text-emerald-600">0</td></tr>
+                                <tr id="row-100"><td class="px-6 py-3 font-black text-slate-700">100 <span class="text-[10px] text-slate-400 uppercase">EGP</span></td><td class="px-6 py-3"><input type="number" min="0" id="input-100" oninput="handleCashInput(100, this.value)" onkeydown="if(event.key==='Enter') this.blur();" class="w-full max-w-[120px] p-2 bg-white border border-slate-200 rounded-lg text-sm font-black text-center focus:ring-2 focus:ring-brand outline-none"></td><td id="tot-100" class="px-6 py-3 text-right font-black text-emerald-600">0</td></tr>
+                                <tr id="row-50"><td class="px-6 py-3 font-black text-slate-700">50 <span class="text-[10px] text-slate-400 uppercase">EGP</span></td><td class="px-6 py-3"><input type="number" min="0" id="input-50" oninput="handleCashInput(50, this.value)" onkeydown="if(event.key==='Enter') this.blur();" class="w-full max-w-[120px] p-2 bg-white border border-slate-200 rounded-lg text-sm font-black text-center focus:ring-2 focus:ring-brand outline-none"></td><td id="tot-50" class="px-6 py-3 text-right font-black text-emerald-600">0</td></tr>
+                                <tr id="row-20"><td class="px-6 py-3 font-black text-slate-700">20 <span class="text-[10px] text-slate-400 uppercase">EGP</span></td><td class="px-6 py-3"><input type="number" min="0" id="input-20" oninput="handleCashInput(20, this.value)" onkeydown="if(event.key==='Enter') this.blur();" class="w-full max-w-[120px] p-2 bg-white border border-slate-200 rounded-lg text-sm font-black text-center focus:ring-2 focus:ring-brand outline-none"></td><td id="tot-20" class="px-6 py-3 text-right font-black text-emerald-600">0</td></tr>
+                                <tr id="row-10"><td class="px-6 py-3 font-black text-slate-700">10 <span class="text-[10px] text-slate-400 uppercase">EGP</span></td><td class="px-6 py-3"><input type="number" min="0" id="input-10" oninput="handleCashInput(10, this.value)" onkeydown="if(event.key==='Enter') this.blur();" class="w-full max-w-[120px] p-2 bg-white border border-slate-200 rounded-lg text-sm font-black text-center focus:ring-2 focus:ring-brand outline-none"></td><td id="tot-10" class="px-6 py-3 text-right font-black text-emerald-600">0</td></tr>
+                                <tr id="row-5"><td class="px-6 py-3 font-black text-slate-700">5 <span class="text-[10px] text-slate-400 uppercase">EGP</span></td><td class="px-6 py-3"><input type="number" min="0" id="input-5" oninput="handleCashInput(5, this.value)" onkeydown="if(event.key==='Enter') this.blur();" class="w-full max-w-[120px] p-2 bg-white border border-slate-200 rounded-lg text-sm font-black text-center focus:ring-2 focus:ring-brand outline-none"></td><td id="tot-5" class="px-6 py-3 text-right font-black text-emerald-600">0</td></tr>
+                            </tbody>
+                            <tfoot class="bg-emerald-50/50 border-t border-emerald-100">
+                                <tr>
+                                    <th colspan="2" class="px-6 py-4 text-right text-xs font-black uppercase text-emerald-800" data-i18n="safe_grand">Safe Grand Total:</th>
+                                    <th id="cash-grand-total" class="px-6 py-4 text-right text-xl font-black text-emerald-600">0 EGP</th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                    
+                    <div id="cash-validation-msg" class="mb-4 p-4 rounded-xl hidden text-sm font-black text-center"></div>
+
+                    <div class="flex justify-end">
+                        <button onclick="validateAndStartDistributing()" class="bg-brand text-white px-6 py-3 rounded-xl text-xs font-black uppercase hover:opacity-90 shadow-lg shadow-brand/20 flex items-center gap-2 transition-all">
+                            <i data-lucide="calculator" class="w-4 h-4"></i> <span data-i18n="start_dist">Start Distributing</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Distribution Adjustment Panel -->
+                <div id="distribution-panel" class="hidden bg-white p-4 md:p-6 rounded-3xl border border-slate-100 shadow-sm mb-6 space-y-4">
+                    <div class="flex justify-between items-center border-b border-slate-50 pb-4">
+                        <h3 class="text-lg font-black text-brand uppercase" data-i18n="adj_sal">Adjust Salaries</h3>
+                        <button onclick="addCustomPayee()" class="bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase hover:bg-emerald-100 transition-colors" data-i18n="add_coun">Add Counselor</button>
+                    </div>
+                    
+                    <div id="distribution-list" class="space-y-3">
+                        <!-- Generated by JS -->
+                    </div>
+                    
+                    <div class="flex flex-col sm:flex-row justify-between items-center gap-4 pt-4 border-t border-slate-50 mt-4">
+                        <div id="dist-totals-info" class="text-xs font-black uppercase text-slate-500"></div>
+                        <button onclick="showEnvelopesCheck()" class="w-full sm:w-auto bg-brand text-white px-8 py-3 rounded-xl text-sm font-black uppercase hover:opacity-90 shadow-lg shadow-brand/20 transition-all flex items-center justify-center gap-2">
+                            <i data-lucide="wallet" class="w-5 h-5"></i> <span data-i18n="show_brk">Show Breakdown</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Standard Payroll Cards (Fallback view) -->
+                <div id="payroll-cards" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 hidden"></div>
+                
+                <!-- Envelope Results -->
+                <div id="envelope-results" class="hidden space-y-6">
+                    <h3 class="text-xl font-black text-brand uppercase" data-i18n="env_res">Envelope Breakdowns</h3>
+                    <div id="envelope-cards" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+                    <div id="envelope-remaining" class="mt-8"></div>
+                    <div class="flex justify-center mt-8">
+                        <button onclick="resetDistribution()" class="bg-slate-100 text-slate-600 px-6 py-3 rounded-xl text-xs font-black uppercase hover:bg-slate-200 transition-colors" data-i18n="reset">Reset / Restart</button>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- Staff View -->
+            <section id="view-staff" class="page-view hidden space-y-6">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-xl font-black text-brand uppercase" data-i18n="staff_rec">Staff Records</h2>
+                    <button onclick="openAddStaff()" class="bg-brand text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase" data-i18n="add_staff">Add Staff Member</button>
+                </div>
+                <div class="table-container">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-slate-50 border-b border-slate-100">
+                            <tr>
+                                <th class="px-6 py-4 text-[10px] font-black uppercase text-slate-400" data-i18n="s_title">Title</th>
+                                <th class="px-6 py-4 text-[10px] font-black uppercase text-slate-400" data-i18n="s_first">First Name</th>
+                                <th class="px-6 py-4 text-[10px] font-black uppercase text-slate-400" data-i18n="s_last">Last Name</th>
+                                <th class="px-6 py-4 text-[10px] font-black uppercase text-slate-400" data-i18n="s_role">Role</th>
+                                <th class="px-6 py-4 text-[10px] font-black uppercase text-slate-400" data-i18n="s_edit">Edit</th>
+                            </tr>
+                        </thead>
+                        <tbody id="staff-list" class="divide-y divide-slate-50 text-sm"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Admin View -->
+            <section id="view-admin" class="page-view hidden space-y-8">
+                <div class="flex flex-col">
+                    <h2 class="text-xl font-black text-brand uppercase" data-i18n="adm_title">System Administration</h2>
+                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-tight" data-i18n="adm_desc">Manage center identity and data portability</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <!-- Branding Card -->
+                    <div class="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm space-y-6">
+                        <div class="flex items-center gap-3 border-b border-slate-50 pb-4">
+                            <i data-lucide="palette" class="w-5 h-5 text-brand"></i>
+                            <h4 class="font-black text-sm text-brand uppercase" data-i18n="adm_brand">Branding & Identity</h4>
+                        </div>
+                        <div class="space-y-4">
+                            <label class="block">
+                                <span class="text-[10px] font-bold text-slate-400 uppercase" data-i18n="adm_cname">Center Name</span>
+                                <input type="text" id="cfg-name" class="w-full mt-1 p-3 bg-slate-50 border border-slate-100 rounded-xl text-sm" value="NEW LIFE" onkeydown="if(event.key==='Enter') this.blur();">
+                            </label>
+                            <div class="space-y-2">
+                                <span class="text-[10px] font-bold text-slate-400 uppercase" data-i18n="adm_logo">Official Logo</span>
+                                <div class="flex items-center gap-4 p-4 border border-dashed border-slate-200 rounded-xl">
+                                    <div id="admin-logo-preview" class="w-16 h-16 bg-slate-50 rounded-xl flex items-center justify-center border border-slate-100 overflow-hidden shrink-0">
+                                        <i data-lucide="image" class="w-6 h-6 text-slate-300"></i>
+                                    </div>
+                                    <div class="flex-1">
+                                        <button onclick="document.getElementById('logo-upload').click()" class="text-[10px] font-black text-brand bg-emerald-50 px-3 py-2 rounded-lg uppercase hover:bg-emerald-100" data-i18n="adm_upl">Upload PNG/JPG</button>
+                                    </div>
+                                    <input type="file" id="logo-upload" class="hidden" accept="image/*" onchange="handleLogoUpload(event)">
+                                </div>
+                            </div>
+                            <button onclick="saveSettings(event)" class="w-full bg-brand text-white py-3 rounded-xl text-xs font-black uppercase mt-4 shadow-lg shadow-emerald-900/10" data-i18n="adm_save">Save Branding</button>
+                        </div>
+                    </div>
+
+                    <!-- Data Management Card -->
+                    <div class="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm space-y-6">
+                        <div class="flex items-center gap-3 border-b border-slate-50 pb-4">
+                            <i data-lucide="database" class="w-5 h-5 text-brand"></i>
+                            <h4 class="font-black text-sm text-brand uppercase" data-i18n="adm_data">Database Sync & Portability</h4>
+                        </div>
+                        <div class="space-y-4">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase leading-relaxed" data-i18n="adm_ddesc">Download a manual JSON backup or restore from file.</p>
+                            
+                            <div class="grid grid-cols-2 gap-3">
+                                <button onclick="exportJSON()" class="flex flex-col items-center justify-center p-4 bg-slate-50 border border-slate-100 rounded-2xl hover:bg-slate-100 transition-all group">
+                                    <i data-lucide="download" class="w-6 h-6 text-brand mb-2"></i>
+                                    <span class="text-[10px] font-black text-brand uppercase" data-i18n="adm_exp">Export JSON</span>
+                                </button>
+                                
+                                <button onclick="document.getElementById('json-import-input').click()" class="flex flex-col items-center justify-center p-4 bg-slate-50 border border-slate-100 rounded-2xl hover:bg-slate-100 transition-all group">
+                                    <i data-lucide="upload" class="w-6 h-6 text-brand mb-2"></i>
+                                    <span class="text-[10px] font-black text-brand uppercase" data-i18n="adm_imp">Import JSON</span>
+                                </button>
+                                <input type="file" id="json-import-input" class="hidden" accept=".json" onchange="importJSON(event)">
+                            </div>
+
+                            <div class="pt-4 border-t border-slate-50">
+                                <button onclick="customConfirm(t('wipe_warn'), () => { localStorage.removeItem(STORAGE_KEY); location.reload(); })" class="w-full flex items-center justify-center gap-2 py-3 bg-red-50 text-red-600 border border-red-100 rounded-xl text-[10px] font-black uppercase hover:bg-red-100 transition-all">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                    <span data-i18n="adm_wipe">Wipe Database</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Edit/Add Modal -->
+    <div id="modal-edit" class="modal">
+        <div class="bg-white w-full max-w-md rounded-3xl p-8 shadow-2xl space-y-6 overflow-y-auto max-h-[90vh]">
+            <h3 id="modal-title" class="text-xl font-black text-brand uppercase">Action</h3>
+            <div id="modal-body" class="space-y-4"></div>
+            <div class="flex gap-3 pt-4">
+                <button onclick="closeModal()" class="flex-1 py-3 bg-slate-100 rounded-xl text-xs font-black uppercase" data-i18n="btn_cancel">Cancel</button>
+                <button id="modal-submit-btn" onclick="submitEdit()" class="flex-1 py-3 bg-brand text-white rounded-xl text-xs font-black uppercase" data-i18n="btn_confirm">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alert Modal (Red for important msgs) -->
+    <div id="modal-alert" class="modal">
+        <div class="bg-white w-full max-w-sm rounded-3xl p-8 shadow-2xl flex flex-col items-center text-center">
+            <div class="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-4 text-red-500">
+                <i data-lucide="alert-triangle" class="w-8 h-8"></i>
+            </div>
+            <h3 id="modal-alert-title" class="text-lg font-black text-slate-800 uppercase mb-2">Warning</h3>
+            <p id="modal-alert-msg" class="text-sm font-bold text-slate-500 mb-6"></p>
+            <button onclick="document.getElementById('modal-alert').classList.remove('active')" class="w-full py-3 bg-brand text-white rounded-xl text-xs font-black uppercase" data-i18n="btn_ok">OK</button>
+        </div>
+    </div>
+
+    <!-- Confirm Modal -->
+    <div id="modal-confirm" class="modal">
+        <div class="bg-white w-full max-w-sm rounded-3xl p-8 shadow-2xl flex flex-col items-center text-center">
+            <div class="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mb-4 text-amber-500">
+                <i data-lucide="help-circle" class="w-8 h-8"></i>
+            </div>
+            <h3 class="text-lg font-black text-slate-800 uppercase mb-2" data-i18n="conf_req">Confirmation</h3>
+            <p id="modal-confirm-msg" class="text-sm font-bold text-slate-500 mb-6"></p>
+            <div class="flex w-full gap-3">
+                <button onclick="closeConfirm()" class="flex-1 py-3 bg-slate-100 rounded-xl text-xs font-black uppercase text-slate-600" data-i18n="btn_no">No</button>
+                <button id="modal-confirm-yes" class="flex-1 py-3 bg-brand text-white rounded-xl text-xs font-black uppercase" data-i18n="btn_yes">Yes</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Firebase Setup
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-app.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCUnCl87m0z8Z3QXTOVPiT5p5R3ttLU634",
+            authDomain: "nlcc-29a65.firebaseapp.com",
+            projectId: "nlcc-29a65",
+            storageBucket: "nlcc-29a65.firebasestorage.app",
+            messagingSenderId: "763242167923",
+            appId: "1:763242167923:web:965c770072fe5d3937f406",
+            measurementId: "G-ST9FX5JKDM"
+        };
+
+        let fbDb = null;
+        let fbDocPath = null;
+        let syncTimeout = null;
+
+        async function initFirebase() {
+            try {
+                const app = initializeApp(firebaseConfig);
+                const auth = getAuth(app);
+                fbDb = getFirestore(app);
+                
+                await signInAnonymously(auth);
+                fbDocPath = doc(fbDb, 'nlcc_state', 'master');
+                
+                onSnapshot(fbDocPath, (docSnap) => {
+                    if (docSnap.exists() && Date.now() - window._lastSaveTime > 2500) {
+                        const data = docSnap.data();
+                        window.state = { ...window.state, ...data };
+                        
+                        // Hydrate Dates
+                        if(data.dashDate) window.state.dashDate = new Date(data.dashDate);
+                        if(data.payDate) window.state.payDate = new Date(data.payDate);
+                        if(data.journDate) window.state.journDate = new Date(data.journDate);
+                        
+                        localStorage.setItem('NLCC_MASTER_V23', JSON.stringify(window.state));
+                        if(window.updateUIBranding) window.updateUIBranding();
+                        if(window.fullUIRender) window.fullUIRender();
+                    }
+                    const s = document.getElementById('firebase-status');
+                    if(s) s.innerHTML = `<i data-lucide="cloud-lightning" class="w-4 h-4 text-emerald-500"></i> <span class="text-emerald-600">${window.t('db_sync')}</span>`;
+                    if(window.lucide) window.lucide.createIcons();
+                }, (error) => {
+                    console.error("Firebase Sync Error", error);
+                    const s = document.getElementById('firebase-status');
+                    if(s) s.innerHTML = `<i data-lucide="wifi-off" class="w-4 h-4 text-red-500"></i> <span class="text-red-500">${window.t('db_err')}</span>`;
+                });
+            } catch(e) {
+                console.log("Local mode only");
+            }
+        }
+
+        window._triggerFirebaseSync = function() {
+            if(!fbDocPath) return;
+            if(syncTimeout) clearTimeout(syncTimeout);
+            syncTimeout = setTimeout(() => {
+                const cleanState = { ...window.state };
+                cleanState.dashDate = window.state.dashDate.getTime();
+                cleanState.payDate = window.state.payDate.getTime();
+                cleanState.journDate = window.state.journDate.getTime();
+                setDoc(fbDocPath, cleanState).catch(e => console.error("FB Write Error", e));
+            }, 1000); 
+        };
+
+        // Initialize Firebase on load
+        initFirebase();
+    </script>
+
+    <script>
+        const STORAGE_KEY = 'NLCC_MASTER_V23';
+        window._lastSaveTime = 0;
+        
+        // Multi-language UI Dictionary
+        window.currentLang = "en";
+        window.LANG_UI = {
+            en: {
+                welcome: "Welcome to NLCC", select_mode: "Select your operating mode",
+                distribute: "Distribute", cash_only: "Cash Breakdown Only",
+                full_version: "Full Version", comp_mgt: "Complete Management",
+                director: "Director", nav_stats: "Stats", nav_journal: "Journal", 
+                nav_payroll: "Payroll", nav_staff: "Staff", nav_admin: "Admin",
+                bulk_sync: "Bulk Sync", logout: "Log Out", dash_title: "Verified Financials",
+                dash_desc: "Confirmed Revenue Summary", stat_collected: "Total Verified Collected",
+                stat_center: "Verified Center Share", stat_staff: "Verified Staff Payouts",
+                tab_ver: "Verified Logs", tab_rev: "Needs Review", tab_trans: "Translations",
+                btn_manual: "Manual Entry", lbl_clients: "Clients:", lbl_couns: "Counselors:",
+                col_date: "Date", col_counselor: "Counselor", col_client: "Client", 
+                col_fee: "Fee", col_center: "Center", col_staff: "Staff", col_status: "Status", col_act: "Action",
+                pay_title: "Verified Payroll", btn_m_ex: "Master Excel", btn_m_pd: "Master PDF",
+                cash_setup: "Cash Setup", expected_tot: "Total Expected Amount",
+                paper_val: "Paper Value", qty_avail: "Quantity Available", tot_amt: "Total Amount",
+                safe_grand: "Safe Grand Total:", start_dist: "Start Distributing",
+                adj_sal: "Adjust Salaries", add_coun: "Add Counselor", show_brk: "Show Breakdown",
+                env_res: "Envelope Breakdowns", reset: "Reset / Restart", staff_rec: "Staff Records",
+                add_staff: "Add Staff Member", s_title: "Title", s_first: "First Name", s_last: "Last Name",
+                s_role: "Role", s_edit: "Edit", adm_title: "System Administration", adm_desc: "Manage center identity and data portability",
+                adm_brand: "Branding & Identity", adm_cname: "Center Name", adm_logo: "Official Logo",
+                adm_upl: "Upload PNG/JPG", adm_save: "Save Branding", adm_data: "Database Sync & Portability",
+                adm_ddesc: "Download a manual JSON backup or restore from file.", adm_exp: "Export JSON",
+                adm_imp: "Import JSON", adm_wipe: "Wipe Database", btn_cancel: "Cancel", btn_confirm: "Confirm",
+                btn_ok: "OK", btn_yes: "Yes", btn_no: "No", conf_req: "Confirmation",
+                exact: "Exact", missing: "Missing", remaining: "Remaining:", impossible: "Cannot fully break amount",
+                errMatch: "Mismatch! Expected Total does not match Cash Total.", diff: "Difference",
+                db_sync: "Database Synced", db_err: "Sync Error", wipe_warn: "Are you sure? This will wipe ALL records forever.",
+                cash_more: "Cash count is MORE than expected.", cash_less: "Cash count is LESS than expected.",
+                match_perf: "Match Perfect", warn_assign: "You have assigned more than available cash.",
+                warn_left: "EGP left unassigned. Continue?"
+            },
+            ar: {
+                welcome: "أهلاً بك في نظام الإدارة", select_mode: "اختر نظام التشغيل",
+                distribute: "توزيع الأموال", cash_only: "نظام توزيع الخزينة فقط",
+                full_version: "النسخة الكاملة", comp_mgt: "إدارة شاملة للمركز",
+                director: "الإدارة", nav_stats: "إحصائيات", nav_journal: "اليومية", 
+                nav_payroll: "المرتبات", nav_staff: "الموظفين", nav_admin: "الإعدادات",
+                bulk_sync: "رفع إكسيل", logout: "تسجيل الخروج", dash_title: "الإيرادات المؤكدة",
+                dash_desc: "ملخص الماليات", stat_collected: "إجمالي المحصل",
+                stat_center: "نسبة المركز", stat_staff: "مرتبات الموظفين",
+                tab_ver: "مؤكدة", tab_rev: "مراجعة", tab_trans: "تراجم",
+                btn_manual: "إضافة يدوي", lbl_clients: "عملاء:", lbl_couns: "أخصائيين:",
+                col_date: "التاريخ", col_counselor: "الأخصائي", col_client: "العميل", 
+                col_fee: "القيمة", col_center: "المركز", col_staff: "الموظف", col_status: "الحالة", col_act: "إجراء",
+                pay_title: "المرتبات المؤكدة", btn_m_ex: "إكسيل مجمع", btn_m_pd: "PDF مجمع",
+                cash_setup: "تجهيز الخزينة", expected_tot: "المبلغ المتوقع",
+                paper_val: "الفئة", qty_avail: "العدد المتوفر", tot_amt: "الإجمالي",
+                safe_grand: "إجمالي الخزينة:", start_dist: "ابدأ التوزيع",
+                adj_sal: "تعديل المرتبات", add_coun: "إضافة موظف", show_brk: "عرض التوزيع",
+                env_res: "توزيع الأظرف", reset: "إعادة ضبط", staff_rec: "سجل الموظفين",
+                add_staff: "إضافة موظف جديد", s_title: "اللقب", s_first: "الاسم الأول", s_last: "الاسم الأخير",
+                s_role: "الوظيفة", s_edit: "تعديل", adm_title: "إعدادات النظام", adm_desc: "إدارة هوية المركز والبيانات",
+                adm_brand: "الهوية", adm_cname: "اسم المركز", adm_logo: "شعار المركز",
+                adm_upl: "رفع صورة", adm_save: "حفظ", adm_data: "مزامنة ونسخ احتياطي",
+                adm_ddesc: "تحميل أو استرجاع البيانات بصيغة JSON", adm_exp: "تحميل JSON",
+                adm_imp: "استرجاع JSON", adm_wipe: "مسح كافة البيانات", btn_cancel: "إلغاء", btn_confirm: "تأكيد",
+                btn_ok: "حسناً", btn_yes: "نعم", btn_no: "لا", conf_req: "تأكيد",
+                exact: "مضبوط", missing: "ناقص", remaining: "متبقي:", impossible: "لا يمكن التوزيع بالكامل",
+                errMatch: "يوجد فرق بين المتوقع والموجود", diff: "الفرق",
+                db_sync: "متصل بقاعدة البيانات", db_err: "خطأ في الاتصال", wipe_warn: "هل أنت متأكد؟ سيتم مسح كافة البيانات للأبد.",
+                cash_more: "المبلغ في الخزينة أكبر من المتوقع.", cash_less: "المبلغ في الخزينة أقل من المتوقع.",
+                match_perf: "المبلغ متطابق تماماً", warn_assign: "المبلغ الموزع أكبر من الخزينة.",
+                warn_left: "جنيه متبقية في الخزينة. الاستمرار؟"
+            }
+        };
+
+        const TRANSLATIONS_NAMES = {
+            "د/": "Dr.", "أ/": "Mr./Ms.", "م/": "Eng.", 
+            "روز": "Rose", "عبد الله": "Abdullah", "بيرونيا": "Beronia", "جورج": "George", "اميل": "Emil", "لبيب": "Labib", "مجدولين": "Magdoline", "ميلاد": "Milad", "حنان": "Hanan", "رشدي": "Roshdy", "ماجد": "Maged", "رشاد": "Rashad", "وليم": "William", "محمود": "Mahmoud", "مختار": "Mokhtar", "ادم": "Adam", "هاني": "Hany", "ماريز": "Mariz", "ساره": "Sarah", "عماد": "Emad", "فيلوباتير": "Philopater", "باسم": "Bassem", "يوسف": "Youssef", "كامل": "Kamel", "موريس": "Maurice", "إيلاريا": "Ilaria", "روبين": "Robin", "رامي": "Ramy"
+        };
+
+        window.t = function(key) { return window.LANG_UI[window.currentLang][key] || key; };
+
+        // Helper to format numbers locally
+        function fmt(num) {
+            if(window.currentLang === 'ar') return num.toLocaleString('ar-EG');
+            return num.toLocaleString();
+        }
+
+        window.toggleLang = function() {
+            window.currentLang = window.currentLang === "en" ? "ar" : "en";
+            document.documentElement.dir = window.currentLang === "ar" ? "rtl" : "ltr";
+            
+            document.getElementById('lang-ind-entry').innerText = window.currentLang.toUpperCase();
+            document.getElementById('lang-ind-main').innerText = window.currentLang.toUpperCase();
+            
+            // Translate all elements with data-i18n
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if(window.LANG_UI[window.currentLang][key]) {
+                    el.innerText = window.LANG_UI[window.currentLang][key];
+                }
+            });
+            
+            if(window.lucide) window.lucide.createIcons();
+            fullUIRender();
+        };
+
+        // State Initialization
+        window.state = {
+            centerName: "NEW LIFE",
+            logoBase64: null,
+            users: [],
+            sessions: [],
+            dashDate: new Date(),
+            payDate: new Date(),
+            journDate: new Date(),
+            journalTab: 'all',
+            editingId: null,
+            editingType: null,
+            monthlyPayroll: {} // Keyed by YYYY-MM
+        };
+
+        function getMonthKey(date) {
+            return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0');
+        }
+
+        function getMonthlyPayroll(key) {
+            if(!window.state.monthlyPayroll[key]) {
+                window.state.monthlyPayroll[key] = {
+                    expected: '',
+                    cash: { 200: '', 100: '', 50: '', 20: '', 10: '', 5: '' },
+                    customPayees: [] // {id, name, amount}
+                };
+            }
+            return window.state.monthlyPayroll[key];
+        }
+
+        window.isDistributing = false;
+        window.isEnvelopesShow = false;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Apply initial dir
+            document.documentElement.dir = window.currentLang === "ar" ? "rtl" : "ltr";
+        });
+
+        // App Modes & Navigation
+        window.initMode = function(mode, fromReload=false) {
+            document.getElementById('entry-overlay').style.display = 'none';
+            if(!fromReload) sessionStorage.setItem('nlcc_mode', mode);
+            
+            if(mode === 'distribute') {
+                document.body.classList.add('mode-distribute');
+                document.body.classList.remove('mode-full');
+                document.getElementById('header-logout-btn').classList.remove('hidden');
+                document.getElementById('header-logout-btn').classList.add('flex');
+                nav('payroll');
+            } else {
+                document.body.classList.add('mode-full');
+                document.body.classList.remove('mode-distribute');
+                document.getElementById('header-logout-btn').classList.add('hidden');
+                document.getElementById('header-logout-btn').classList.remove('flex');
+                nav('dashboard');
+            }
+        };
+
+        window.logout = function() {
+            sessionStorage.removeItem('nlcc_mode');
+            document.body.classList.remove('mode-distribute', 'mode-full');
+            document.getElementById('entry-overlay').style.display = 'flex';
+        };
+
+        window.toggleSidebar = function() {
+            document.body.classList.toggle('sidebar-collapsed');
+        };
+
+        // Data Storage
+        window.localSave = function() {
+            window._lastSaveTime = Date.now();
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(window.state));
+            updateReviewCount();
+            if(window._triggerFirebaseSync) window._triggerFirebaseSync();
+        };
+
+        window.updateUIBranding = function() {
+            document.getElementById('display-center-name').innerText = window.state.centerName;
+            document.getElementById('mobile-title').innerText = window.state.centerName;
+            document.getElementById('cfg-name').value = window.state.centerName;
+            const logoContainer = document.getElementById('logo-container');
+            const adminPreview = document.getElementById('admin-logo-preview');
+            if(window.state.logoBase64) {
+                logoContainer.innerHTML = `<img src="${window.state.logoBase64}" class="w-10 h-10 object-contain rounded-lg">`;
+                adminPreview.innerHTML = `<img src="${window.state.logoBase64}" class="w-full h-full object-contain">`;
+            } else {
+                logoContainer.innerHTML = `<div class="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center text-brand font-black italic">NL</div>`;
+                adminPreview.innerHTML = `<i data-lucide="image" class="w-6 h-6 text-slate-300"></i>`;
+                if(window.lucide) window.lucide.createIcons();
+            }
+        };
+
+        window.saveSettings = function(e) {
+            window.state.centerName = document.getElementById('cfg-name').value;
+            window.localSave();
+            const btn = e.currentTarget;
+            const old = btn.innerText;
+            btn.innerText = window.t('adm_save') + " ✅";
+            setTimeout(() => { btn.innerText = old; }, 2000);
+            window.updateUIBranding();
+        };
+
+        window.handleLogoUpload = function(event) {
+            const file = event.target.files[0];
+            if(!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => { window.state.logoBase64 = e.target.result; window.localSave(); window.updateUIBranding(); };
+            reader.readAsDataURL(file);
+        };
+
+        window.nav = function(id) {
+            document.querySelectorAll('.page-view').forEach(v => v.classList.add('hidden'));
+            document.getElementById(`view-${id}`).classList.remove('hidden');
+            document.querySelectorAll('#main-nav button').forEach(b => b.classList.remove('nav-btn-active'));
+            if(document.getElementById(`btn-${id}`)) document.getElementById(`btn-${id}`).classList.add('nav-btn-active');
+            
+            if(window.innerWidth < 768) { document.body.classList.add('sidebar-collapsed'); }
+
+            window.fullUIRender(id);
+        };
+
+        window.fullUIRender = function(targetId) {
+            const t = targetId || Array.from(document.querySelectorAll('.page-view')).find(el => !el.classList.contains('hidden'))?.id.replace('view-', '');
+            if(!t) return;
+            
+            if(t === 'dashboard') window.renderDash();
+            if(t === 'journal') window.renderJournal();
+            if(t === 'staff') window.renderStaff();
+            if(t === 'payroll') {
+                if(!window.isDistributing && !window.isEnvelopesShow) {
+                    document.getElementById('payroll-header-controls').classList.remove('hidden');
+                    window.resetDistribution();
+                } else if (window.isDistributing) {
+                    window.renderDistList();
+                }
+            }
+            if(window.lucide) window.lucide.createIcons();
+        };
+
+        function updateReviewCount() {
+            const m = window.state.journDate.getMonth(), y = window.state.journDate.getFullYear();
+            const reviewCount = window.state.sessions.filter(s => {
+                const d = new Date(s.date);
+                return d.getMonth() === m && d.getFullYear() === y && s.isFlagged;
+            }).length;
+            const badge = document.getElementById('flag-count');
+            if(badge) badge.innerText = fmt(reviewCount);
+        }
+
+        // Custom Modals
+        window.customAlert = function(msg) {
+            document.getElementById('modal-alert-msg').innerText = msg;
+            document.getElementById('modal-alert-title').innerText = window.t('conf_req');
+            document.getElementById('modal-alert').classList.add('active');
+        };
+
+        window.customConfirm = function(msg, onYes) {
+            document.getElementById('modal-confirm-msg').innerText = msg;
+            document.getElementById('modal-confirm-title') ? document.getElementById('modal-confirm-title').innerText = window.t('conf_req') : null;
+            document.getElementById('modal-confirm').classList.add('active');
+            const yesBtn = document.getElementById('modal-confirm-yes');
+            yesBtn.onclick = () => {
+                document.getElementById('modal-confirm').classList.remove('active');
+                if(onYes) onYes();
+            };
+        };
+
+        window.closeConfirm = function() {
+            document.getElementById('modal-confirm').classList.remove('active');
+        };
+
+        // Cash & Payroll UI Setup
+        window.resetDistribution = function() {
+            window.isDistributing = false;
+            window.isEnvelopesShow = false;
+            document.getElementById('distribution-panel').classList.add('hidden');
+            document.getElementById('envelope-results').classList.add('hidden');
+            
+            // Build Base Layout
+            const mkey = getMonthKey(window.state.payDate);
+            const mp = getMonthlyPayroll(mkey);
+            
+            document.getElementById('cash-expected-total').value = mp.expected === 0 ? '' : mp.expected;
+            window.renderCashTable();
+            window.validateCashMatch();
+
+            // Render Payroll Cards initially (Hidden if in distribute mode but we reset it to hidden later if needed)
+            const m = window.state.payDate.getMonth(), y = window.state.payDate.getFullYear();
+            document.getElementById('pay-date-display').innerText = window.state.payDate.toLocaleString(window.currentLang === 'ar' ? 'ar-EG' : 'en-US', { month: 'long', year: 'numeric' });
+        };
+
+        window.handleCashExpected = function(val) {
+            const mkey = getMonthKey(window.state.payDate);
+            const mp = getMonthlyPayroll(mkey);
+            mp.expected = val === '' ? '' : parseInt(val) || 0;
+            window.localSave();
+            window.validateCashMatch();
+        };
+        
+        // Attach listener specifically for expected cash outside to not lose focus
+        document.addEventListener('DOMContentLoaded', () => {
+            const expInput = document.getElementById('cash-expected-total');
+            if(expInput) expInput.addEventListener('input', (e) => window.handleCashExpected(e.target.value));
+        });
+
+        window.handleCashInput = function(note, val) {
+            const mkey = getMonthKey(window.state.payDate);
+            const mp = getMonthlyPayroll(mkey);
+            mp.cash[note] = val === '' ? '' : parseInt(val) || 0;
+            window.localSave();
+            
+            // Direct DOM update to preserve focus
+            const qty = mp.cash[note] || 0;
+            const total = qty * note;
+            document.getElementById(`tot-${note}`).innerText = fmt(total);
+            
+            let gTotal = 0;
+            [200, 100, 50, 20, 10, 5].forEach(n => gTotal += (mp.cash[n] || 0) * n);
+            document.getElementById('cash-grand-total').innerText = `${fmt(gTotal)} EGP`;
+            
+            window.validateCashMatch();
+        };
+
+        window.getCashSum = function() {
+            const mkey = getMonthKey(window.state.payDate);
+            const mp = getMonthlyPayroll(mkey);
+            return [200, 100, 50, 20, 10, 5].reduce((acc, n) => acc + ((mp.cash[n] || 0) * n), 0);
+        };
+
+        window.renderCashTable = function() {
+            const mkey = getMonthKey(window.state.payDate);
+            const mp = getMonthlyPayroll(mkey);
+            const notes = [200, 100, 50, 20, 10, 5];
+            
+            // Only update values to prevent focus loss if table exists
+            notes.forEach(n => {
+                const input = document.getElementById(`input-${n}`);
+                const tot = document.getElementById(`tot-${n}`);
+                const val = mp.cash[n] !== undefined ? mp.cash[n] : '';
+                if(input && input.value !== String(val)) input.value = val;
+                if(tot) tot.innerText = fmt((parseInt(val)||0) * n);
+            });
+            
+            document.getElementById('cash-expected-total').value = mp.expected;
+            document.getElementById('cash-grand-total').innerText = `${fmt(window.getCashSum())} EGP`;
+            window.validateCashMatch();
+        };
+
+        window.validateCashMatch = function() {
+            const mkey = getMonthKey(window.state.payDate);
+            const mp = getMonthlyPayroll(mkey);
+            const expStr = mp.expected;
+            const exp = parseInt(expStr) || 0;
+            const act = window.getCashSum();
+            const msgEl = document.getElementById('cash-validation-msg');
+            if(!msgEl) return;
+            
+            if(expStr === '' && act === 0) {
+                msgEl.classList.add('hidden');
+                return true;
+            }
+
+            if(exp === act) {
+                msgEl.className = 'mb-4 p-4 rounded-xl text-sm font-black text-center bg-emerald-50 border border-emerald-100 text-emerald-700 block';
+                msgEl.innerHTML = `<i data-lucide="check-circle" class="w-4 h-4 inline mr-1"></i> ${window.t('match_perf')}`;
+                if(window.lucide) window.lucide.createIcons();
+                return true;
+            } else {
+                msgEl.className = 'mb-4 p-4 rounded-xl text-sm font-black text-center bg-red-50 border border-red-100 text-red-600 block';
+                const diff = Math.abs(exp - act);
+                const isMore = act > exp;
+                const txt = isMore ? window.t('cash_more') : window.t('cash_less');
+                msgEl.innerHTML = `<i data-lucide="alert-triangle" class="w-4 h-4 inline mr-1"></i> ${txt} ${window.t('diff')}: ${fmt(diff)} EGP`;
+                if(window.lucide) window.lucide.createIcons();
+                return false;
+            }
+        };
+
+        window.validateAndStartDistributing = function() {
+            if(window.getCashSum() === 0) {
+                window.customAlert(window.t('errMatch'));
+                return;
+            }
+            window.startDistributing();
+        };
+
+        window.startDistributing = function() {
+            window.isDistributing = true;
+            document.getElementById('payroll-cards').classList.add('hidden');
+            document.getElementById('envelope-results').classList.add('hidden');
+            document.getElementById('distribution-panel').classList.remove('hidden');
+            document.getElementById('payroll-header-controls').classList.add('hidden');
+
+            const mkey = getMonthKey(window.state.payDate);
+            const mp = getMonthlyPayroll(mkey);
+            
+            const m = window.state.payDate.getMonth(), y = window.state.payDate.getFullYear();
+            
+            // Build unified payees list
+            let basePayees = window.state.users.map(u => {
+                const logs = window.state.sessions.filter(s => { const d = new Date(s.date); return d.getMonth() === m && d.getFullYear() === y && s.uid === u.id && s.verified === true; });
+                const total = logs.reduce((acc, s) => acc + s.staff, 0);
+                return { name: `${u.title || ''} ${u.fname} ${u.lname}`.trim(), amount: total, id: u.id };
+            });
+
+            // Merge with saved overrides
+            if(!mp.customPayees || mp.customPayees.length === 0) {
+                mp.customPayees = basePayees;
+            } else {
+                // Keep saved names and manually added ones
+                let merged = [...mp.customPayees];
+                basePayees.forEach(bp => {
+                    if(!merged.find(p => p.id === bp.id)) merged.push(bp);
+                });
+                mp.customPayees = merged;
+            }
+            
+            window.localSave();
+            window.renderDistList();
+        };
+
+        window.renderDistList = function() {
+            const mkey = getMonthKey(window.state.payDate);
+            const mp = getMonthlyPayroll(mkey);
+            const list = document.getElementById('distribution-list');
+            
+            list.innerHTML = mp.customPayees.map((p, idx) => {
+                let nameHtml = '';
+                if(p.id && !p.editing) {
+                    nameHtml = `<div class="w-full sm:flex-1 flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-100"><span class="font-black text-slate-700">${p.name}</span><button onclick="toggleLabelEdit(${idx})" class="text-[10px] font-black uppercase text-brand hover:underline">${window.t('s_edit')}</button></div>`;
+                } else {
+                    nameHtml = `<div class="w-full sm:flex-1"><input type="text" class="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm font-black text-slate-700 focus:ring-2 focus:ring-brand outline-none" value="${p.name}" oninput="updatePayeeName(${idx}, this.value)" onkeydown="if(event.key==='Enter') { this.blur(); closeLabelEdit(${idx}); }"></div>`;
+                }
+                const amtVal = p.amount === 0 ? '' : p.amount;
+                return `
+                <div class="flex flex-col sm:flex-row gap-4 items-center bg-white p-3 rounded-2xl border border-slate-100 shadow-sm transition-colors focus-within:border-brand-light focus-within:bg-brand-light/30">
+                    ${nameHtml}
+                    <div class="w-full sm:w-auto flex items-center gap-2">
+                        <input type="number" placeholder="0" class="w-full sm:w-32 p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-right font-black text-brand focus:ring-2 focus:ring-brand outline-none" value="${amtVal}" oninput="updatePayeeAmt(${idx}, this.value)" onkeydown="if(event.key==='Enter') this.blur();">
+                        <span class="text-[10px] font-black text-slate-400 uppercase w-8 shrink-0 text-center">EGP</span>
+                    </div>
+                    <button onclick="removePayee(${idx})" class="text-slate-300 hover:text-red-500 p-2 shrink-0"><i data-lucide="x" class="w-5 h-5"></i></button>
+                </div>
+            `}).join('');
+            
+            window.updateDistTotals();
+            if(window.lucide) window.lucide.createIcons();
+        };
+
+        window.updatePayeeName = function(idx, val) {
+            const mkey = getMonthKey(window.state.payDate);
+            window.state.monthlyPayroll[mkey].customPayees[idx].name = val;
+            window.localSave();
+        };
+
+        window.toggleLabelEdit = function(idx) {
+            const mkey = getMonthKey(window.state.payDate);
+            window.state.monthlyPayroll[mkey].customPayees[idx].editing = true;
+            window.renderDistList();
+        };
+
+        window.closeLabelEdit = function(idx) {
+            const mkey = getMonthKey(window.state.payDate);
+            window.state.monthlyPayroll[mkey].customPayees[idx].editing = false;
+            window.localSave();
+            window.renderDistList();
+        };
+
+        window.updatePayeeAmt = function(idx, val) {
+            const mkey = getMonthKey(window.state.payDate);
+            window.state.monthlyPayroll[mkey].customPayees[idx].amount = val === '' ? '' : (parseInt(val) || 0);
+            window.localSave();
+            window.updateDistTotals();
+        };
+
+        window.updateDistTotals = function() {
+            const mkey = getMonthKey(window.state.payDate);
+            const mp = getMonthlyPayroll(mkey);
+            const sum = mp.customPayees.reduce((acc, p) => acc + (p.amount || 0), 0);
+            const avail = window.getCashSum();
+            
+            let color = sum > avail ? 'text-red-600' : 'text-emerald-600';
+            document.getElementById('dist-totals-info').innerHTML = `
+                Assigned: <span class="font-black ${color}">${fmt(sum)}</span> / Available: <span class="font-black text-brand">${fmt(avail)} EGP</span>
+            `;
+        };
+
+        window.addCustomPayee = function() {
+            const mkey = getMonthKey(window.state.payDate);
+            window.state.monthlyPayroll[mkey].customPayees.push({ name: '', amount: 0, id: null, editing: true });
+            window.localSave();
+            window.renderDistList();
+        };
+
+        window.removePayee = function(idx) {
+            const mkey = getMonthKey(window.state.payDate);
+            window.state.monthlyPayroll[mkey].customPayees.splice(idx, 1);
+            window.localSave();
+            window.renderDistList();
+        };
+
+        window.showEnvelopesCheck = function() {
+            const mkey = getMonthKey(window.state.payDate);
+            const mp = getMonthlyPayroll(mkey);
+            const sumAssigned = mp.customPayees.reduce((acc, p) => acc + (p.amount || 0), 0);
+            const available = window.getCashSum();
+
+            if (sumAssigned > available) {
+                window.customAlert(window.t('warn_assign'));
+                return;
+            }
+
+            if (sumAssigned < available) {
+                const diff = available - sumAssigned;
+                window.customConfirm(`${fmt(diff)} ${window.t('warn_left')}`, () => {
+                    window.showEnvelopesReal();
+                });
+                return;
+            }
+
+            window.showEnvelopesReal();
+        };
+
+        window.showEnvelopesReal = function() {
+            window.isEnvelopesShow = true;
+            document.getElementById('distribution-panel').classList.add('hidden');
+            const results = document.getElementById('envelope-results');
+            results.classList.remove('hidden');
+
+            const mkey = getMonthKey(window.state.payDate);
+            const mp = getMonthlyPayroll(mkey);
+            const notes = [200, 100, 50, 20, 10, 5];
+            
+            let inv = {};
+            notes.forEach(n => inv[n] = parseInt(mp.cash[n]) || 0);
+
+            let html = '';
+            const validPayees = mp.customPayees.filter(p => p.amount > 0);
+
+            for(let p of validPayees) {
+                let remaining = p.amount;
+                let breakdown = {};
+                for(let n of notes) {
+                    if(remaining >= n && inv[n] > 0) {
+                        let needed = Math.floor(remaining / n);
+                        let take = Math.min(needed, inv[n]);
+                        if(take > 0) {
+                            breakdown[n] = take;
+                            remaining -= take * n;
+                            inv[n] -= take;
+                        }
+                    }
+                }
+
+                let lines = Object.keys(breakdown).sort((a,b)=>b-a).map(n => `<span class="bg-emerald-50 text-emerald-800 px-3 py-1.5 rounded-lg border border-emerald-200 text-sm font-black shadow-sm" dir="ltr">${breakdown[n]} × ${n}</span>`).join('');
+                let status = remaining === 0 
+                    ? `<span class="text-xs font-black text-emerald-500 uppercase flex items-center gap-1"><i data-lucide="check-circle-2" class="w-4 h-4"></i> ${window.t('exact')}</span>`
+                    : `<span class="text-xs font-black text-red-500 uppercase flex items-center gap-1"><i data-lucide="alert-circle" class="w-4 h-4"></i> ${window.t('missing')} ${fmt(remaining)} EGP</span>`;
+
+                html += `<div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-lg shadow-slate-200/50 flex flex-col justify-between">
+                    <div>
+                        <h4 class="text-xl font-black text-brand mb-1 truncate">${p.name || 'Unnamed'}</h4>
+                        <p class="text-3xl font-black text-emerald-600 mb-6">${fmt(p.amount)} <span class="text-xs">EGP</span></p>
+                        <div class="space-y-3">
+                            <div class="flex flex-wrap gap-2">${lines || '<span class="text-xs font-bold text-slate-400 italic">No cash allocated</span>'}</div>
+                        </div>
+                    </div>
+                    <div class="mt-6 pt-4 border-t border-slate-50 flex justify-between items-center">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Envelope</span>
+                        ${status}
+                    </div>
+                </div>`;
+            }
+
+            document.getElementById('envelope-cards').innerHTML = html;
+            let safeTotal = notes.reduce((acc, n) => acc + (inv[n]*n), 0);
+            
+            document.getElementById('envelope-remaining').innerHTML = `<div class="bg-slate-50 p-8 rounded-[2rem] border border-slate-200 shadow-inner flex flex-col justify-center items-center text-center max-w-2xl mx-auto">
+                <i data-lucide="safe" class="w-8 h-8 text-slate-300 mb-3"></i>
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">${window.t('remaining')} in Safe</p>
+                <h4 class="text-4xl font-black text-slate-700 mb-6">${fmt(safeTotal)} <span class="text-sm">EGP</span></h4>
+                <div class="flex flex-wrap gap-2 justify-center" dir="ltr">
+                    ${notes.map(n => inv[n] > 0 ? `<span class="bg-white text-slate-600 border border-slate-200 px-4 py-2 rounded-xl text-sm font-black shadow-sm">${inv[n]} × ${n}</span>` : '').join('')}
+                </div>
+            </div>`;
+            if(window.lucide) window.lucide.createIcons();
+        };
+
+        // --- DASHBOARD AND OTHERS ---
+
+        window.renderDash = function() {
+            const m = window.state.dashDate.getMonth(), y = window.state.dashDate.getFullYear();
+            document.getElementById('dash-date-display').innerText = window.state.dashDate.toLocaleString(window.currentLang==='ar'?'ar-EG':'en-US', { month: 'long', year: 'numeric' });
+            const monthLogs = window.state.sessions.filter(s => { const d = new Date(s.date); return d.getMonth() === m && d.getFullYear() === y && s.verified === true; });
+            document.getElementById('stat-total').innerText = fmt(monthLogs.reduce((acc, s) => acc + s.price, 0)) + " EGP";
+            document.getElementById('stat-center').innerText = fmt(monthLogs.reduce((acc, s) => acc + s.center, 0)) + " EGP";
+            document.getElementById('stat-counselors').innerText = fmt(monthLogs.reduce((acc, s) => acc + s.staff, 0)) + " EGP";
+        };
+
+        window.setJournalTab = function(t) { window.state.journalTab = t; window.renderJournal(); };
+
+        window.renderJournal = function() {
+            const list = document.getElementById('journal-list');
+            document.getElementById('journ-date-display').innerText = window.state.journDate.toLocaleString(window.currentLang==='ar'?'ar-EG':'en-US', { month: 'long', year: 'numeric' });
+            document.querySelectorAll('#view-journal button[id^="tab-"]').forEach(btn => btn.classList.remove('tab-btn-active'));
+            document.getElementById(`tab-${window.state.journalTab}`).classList.add('tab-btn-active');
+            
+            const m = window.state.journDate.getMonth(), y = window.state.journDate.getFullYear();
+            let display = [];
+            if(window.state.journalTab === 'flagged') display = window.state.sessions.filter(s => s.isFlagged);
+            else if(window.state.journalTab === 'trans') display = window.state.sessions.filter(s => /[\u0600-\u06FF]/.test(s.client));
+            else display = window.state.sessions.filter(s => s.verified);
+            
+            const filtered = display.filter(s => { const d = new Date(s.date); return d.getMonth() === m && d.getFullYear() === y; });
+            list.innerHTML = filtered.map(s => {
+                const u = window.state.users.find(x => x.id === s.uid) || { fname: 'Unknown' };
+                return `<tr><td class="px-4 py-4 text-[11px] text-slate-400 font-mono" dir="ltr">${s.date}</td><td class="px-4 py-4 font-bold text-slate-700">${u.title || ''} ${u.fname}</td><td class="px-4 py-4 text-slate-500">${s.client}</td><td class="px-4 py-4 text-right font-bold text-slate-400">${fmt(s.price)}</td><td class="px-4 py-4 text-right font-bold text-brand">${fmt(s.center)}</td><td class="px-4 py-4 text-right font-black text-emerald-600">${fmt(s.staff)}</td><td class="px-4 py-4"><span class="status-pill ${s.verified ? 'status-verified' : 'status-review'}">${s.verified ? window.t('exact') : window.t('tab_rev')}</span></td><td class="px-4 py-4"><button onclick="editItem('session', '${s.id}')" class="text-xs font-black text-brand uppercase">Edit</button></td></tr>`;
+            }).join('');
+            
+            document.getElementById('metric-clients').innerText = fmt(filtered.length);
+            document.getElementById('metric-counselors').innerText = fmt(new Set(filtered.map(s => s.uid)).size);
+            updateReviewCount();
+        };
+
+        window.renderStaff = function() {
+            document.getElementById('staff-list').innerHTML = window.state.users.map(u => `<tr><td class="px-6 py-4 font-bold">${u.title}</td><td class="px-6 py-4 text-brand font-black">${u.fname}</td><td class="px-6 py-4">${u.lname}</td><td class="px-6 py-4 uppercase text-[10px] font-black">${u.role}</td><td class="px-6 py-4"><button onclick="editItem('staff', '${u.id}')" class="text-xs font-black text-brand uppercase underline">Edit</button></td></tr>`).join('');
+        };
+
+        // Edit Items
+        window.openAddStaff = function() {
+            window.state.editingId = null; window.state.editingType = 'staff';
+            const body = document.getElementById('modal-body');
+            body.innerHTML = `<label class="text-[10px] font-black text-slate-400 uppercase">${window.t('s_title')}</label><input type="text" id="edit-title" class="w-full p-3 bg-slate-50 rounded-xl mb-2" onkeydown="if(event.key==='Enter') this.blur();"><label class="text-[10px] font-black text-slate-400 uppercase">${window.t('s_first')}</label><input type="text" id="edit-fname" class="w-full p-3 bg-slate-50 rounded-xl mb-2" onkeydown="if(event.key==='Enter') this.blur();"><label class="text-[10px] font-black text-slate-400 uppercase">${window.t('s_last')}</label><input type="text" id="edit-lname" class="w-full p-3 bg-slate-50 rounded-xl" onkeydown="if(event.key==='Enter') this.blur();">`;
+            document.getElementById('modal-edit').classList.add('active');
+        };
+
+        window.openAddSession = function() {
+            window.state.editingId = null; window.state.editingType = 'session';
+            const body = document.getElementById('modal-body');
+            const counselorOptions = window.state.users.map(u => `<option value="${u.id}">${u.title} ${u.fname} ${u.lname}</option>`).join('');
+            body.innerHTML = `
+                <label class="text-[10px] font-black text-slate-400 uppercase">${window.t('col_counselor')}</label>
+                <select id="edit-uid" class="w-full p-3 bg-slate-50 rounded-xl mb-2">${counselorOptions}</select>
+                <label class="text-[10px] font-black text-slate-400 uppercase">${window.t('col_date')}</label>
+                <input type="date" id="edit-date" class="w-full p-3 bg-slate-50 rounded-xl mb-2" value="${new Date().toISOString().split('T')[0]}">
+                <label class="text-[10px] font-black text-slate-400 uppercase">${window.t('col_client')}</label>
+                <input type="text" id="edit-client" class="w-full p-3 bg-slate-50 rounded-xl mb-2" onkeydown="if(event.key==='Enter') this.blur();">
+                <label class="text-[10px] font-black text-slate-400 uppercase">${window.t('col_fee')}</label>
+                <input type="number" id="edit-price" class="w-full p-3 bg-slate-50 rounded-xl mb-2" value="350" onkeydown="if(event.key==='Enter') this.blur();">
+                <label class="text-[10px] font-black text-slate-400 uppercase">${window.t('col_staff')}</label>
+                <input type="number" id="edit-staff" class="w-full p-3 bg-slate-50 rounded-xl" value="250" onkeydown="if(event.key==='Enter') this.blur();">
+            `;
+            document.getElementById('modal-edit').classList.add('active');
+        };
+
+        window.editItem = function(type, id) {
+            window.state.editingId = id; window.state.editingType = type;
+            const body = document.getElementById('modal-body');
+            if(type === 'session') {
+                const s = window.state.sessions.find(x => x.id === id);
+                const counselorOptions = window.state.users.map(u => `<option value="${u.id}" ${u.id === s.uid ? 'selected' : ''}>${u.title} ${u.fname} ${u.lname}</option>`).join('');
+                body.innerHTML = `
+                    <label class="text-[10px] font-black text-slate-400 uppercase">${window.t('col_counselor')}</label>
+                    <select id="edit-uid" class="w-full p-3 bg-slate-50 rounded-xl mb-2">${counselorOptions}</select>
+                    <label class="text-[10px] font-black text-slate-400 uppercase">${window.t('col_date')}</label>
+                    <input type="date" id="edit-date" class="w-full p-3 bg-slate-50 rounded-xl mb-2" value="${s.date}">
+                    <label class="text-[10px] font-black text-slate-400 uppercase">${window.t('col_client')}</label>
+                    <input type="text" id="edit-client" class="w-full p-3 bg-slate-50 rounded-xl mb-2" value="${s.client}" onkeydown="if(event.key==='Enter') this.blur();">
+                    <label class="text-[10px] font-black text-slate-400 uppercase">${window.t('col_fee')}</label>
+                    <input type="number" id="edit-price" class="w-full p-3 bg-slate-50 rounded-xl mb-2" value="${s.price}" onkeydown="if(event.key==='Enter') this.blur();">
+                    <label class="text-[10px] font-black text-slate-400 uppercase">${window.t('col_staff')}</label>
+                    <input type="number" id="edit-staff" class="w-full p-3 bg-slate-50 rounded-xl" value="${s.staff}" onkeydown="if(event.key==='Enter') this.blur();">
+                `;
+            } else if(type === 'reset') {
+                body.innerHTML = `<p class="text-sm font-black text-red-600 uppercase text-center">${window.t('wipe_warn')}</p>`;
+            } else {
+                const u = window.state.users.find(x => x.id === id);
+                body.innerHTML = `<label class="text-[10px] font-black text-slate-400 uppercase">${window.t('s_title')}</label><input type="text" id="edit-title" class="w-full p-3 bg-slate-50 rounded-xl mb-2" value="${u.title}" onkeydown="if(event.key==='Enter') this.blur();"><label class="text-[10px] font-black text-slate-400 uppercase">${window.t('s_first')}</label><input type="text" id="edit-fname" class="w-full p-3 bg-slate-50 rounded-xl mb-2" value="${u.fname}" onkeydown="if(event.key==='Enter') this.blur();"><label class="text-[10px] font-black text-slate-400 uppercase">${window.t('s_last')}</label><input type="text" id="edit-lname" class="w-full p-3 bg-slate-50 rounded-xl" value="${u.lname}" onkeydown="if(event.key==='Enter') this.blur();">`;
+            }
+            document.getElementById('modal-edit').classList.add('active');
+        };
+
+        window.submitEdit = function() {
+            if(window.state.editingType === 'reset') {
+                localStorage.removeItem(STORAGE_KEY);
+                location.reload();
+                return;
+            }
+            if(window.state.editingType === 'session') {
+                const price = parseFloat(document.getElementById('edit-price').value);
+                const staff = parseFloat(document.getElementById('edit-staff').value);
+                const sessionData = {
+                    uid: document.getElementById('edit-uid').value,
+                    date: document.getElementById('edit-date').value,
+                    client: document.getElementById('edit-client').value,
+                    price: price, staff: staff, center: price - staff,
+                    verified: price === 350, isFlagged: price !== 350
+                };
+                if(window.state.editingId) Object.assign(window.state.sessions.find(x => x.id === window.state.editingId), sessionData);
+                else window.state.sessions.unshift({ id: 's-'+Math.random().toString(36).substr(2,9), ...sessionData });
+            } else {
+                if(window.state.editingId) {
+                    const u = window.state.users.find(x => x.id === window.state.editingId);
+                    u.title = document.getElementById('edit-title').value;
+                    u.fname = document.getElementById('edit-fname').value;
+                    u.lname = document.getElementById('edit-lname').value;
+                } else {
+                    window.state.users.push({ id: 'u-'+Math.random().toString(36).substr(2,9), title: document.getElementById('edit-title').value, fname: document.getElementById('edit-fname').value, lname: document.getElementById('edit-lname').value, role: 'counselor' });
+                }
+            }
+            window.localSave(); window.closeModal(); window.fullUIRender();
+        };
+
+        window.closeModal = function() { document.getElementById('modal-edit').classList.remove('active'); };
+        
+        window.adjDate = function(v, type) {
+            const target = type === 'dash' ? 'dashDate' : (type === 'pay' ? 'payDate' : 'journDate');
+            window.state[target].setMonth(window.state[target].getMonth() + v);
+            window.fullUIRender();
+        };
+
+        window.confirmReset = function() {
+            window.editItem('reset', null);
+            document.getElementById('modal-title').innerText = "WIPE DATABASE";
+        };
+
+        window.exportJSON = function() {
+            const dataStr = JSON.stringify(window.state, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `nlcc_backup.json`;
+            a.click();
+        };
+
+        window.importJSON = function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                window.state = JSON.parse(e.target.result);
+                // Hydrate dates properly
+                if(window.state.dashDate) window.state.dashDate = new Date(window.state.dashDate);
+                if(window.state.payDate) window.state.payDate = new Date(window.state.payDate);
+                if(window.state.journDate) window.state.journDate = new Date(window.state.journDate);
+                window.localSave();
+                location.reload();
+            };
+            reader.readAsText(file);
+        };
+
+        window.exportMasterExcel = function() {
+            const m = window.state.payDate.getMonth(), y = window.state.payDate.getFullYear();
+            const data = window.state.users.map(u => {
+                const logs = window.state.sessions.filter(s => {
+                    const d = new Date(s.date);
+                    return d.getMonth() === m && d.getFullYear() === y && s.uid === u.id && s.verified === true;
+                });
+                if(logs.length === 0) return null;
+                return {
+                    "Practitioner": `${u.title} ${u.fname} ${u.lname}`,
+                    "Sessions": logs.length,
+                    "Total Revenue": logs.reduce((acc, s) => acc + s.price, 0),
+                    "Center Share": logs.reduce((acc, s) => acc + s.center, 0),
+                    "Staff Payout": logs.reduce((acc, s) => acc + s.staff, 0)
+                };
+            }).filter(x => x);
+
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Master Payroll");
+            XLSX.writeFile(wb, `Master_Payroll_${window.state.payDate.toLocaleString('en-US', { month: 'short', year: 'numeric' })}.xlsx`);
+        };
+
+        window.exportMasterPDF = function() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const m = window.state.payDate.getMonth(), y = window.state.payDate.getFullYear();
+            
+            doc.setFillColor(6, 78, 59); doc.rect(0, 0, 210, 40, 'F');
+            doc.setTextColor(255, 255, 255); doc.setFontSize(24); doc.text(window.state.centerName, 20, 20);
+            doc.setFontSize(10); doc.text(`Master Statement: ${window.state.payDate.toLocaleString('en-US', { month: 'long', year: 'numeric' })}`, 20, 30);
+            
+            const rows = window.state.users.map(u => {
+                const logs = window.state.sessions.filter(s => {
+                    const d = new Date(s.date);
+                    return d.getMonth() === m && d.getFullYear() === y && s.uid === u.id && s.verified === true;
+                });
+                if(logs.length === 0) return null;
+                return [
+                    `${u.title} ${u.fname} ${u.lname}`,
+                    logs.length,
+                    logs.reduce((acc, s) => acc + s.center, 0) + " EGP",
+                    logs.reduce((acc, s) => acc + s.staff, 0) + " EGP"
+                ];
+            }).filter(x => x);
+
+            doc.autoTable({
+                startY: 50,
+                head: [['Practitioner', 'Sessions', 'Center Total', 'Staff Total']],
+                body: rows,
+                headStyles: { fillColor: [6, 78, 59] }
+            });
+
+            doc.save(`Master_Report_${window.state.payDate.toLocaleString('en-US', { month: 'short', year: 'numeric' })}.pdf`);
+        };
+
+        window.exportCounselorExcel = function(uid) {
+            const u = window.state.users.find(x => x.id === uid);
+            const m = window.state.payDate.getMonth(), y = window.state.payDate.getFullYear();
+            const logs = window.state.sessions.filter(s => {
+                const d = new Date(s.date);
+                return d.getMonth() === m && d.getFullYear() === y && s.uid === uid && s.verified === true;
+            });
+            const data = logs.map(s => ({
+                "Date": s.date,
+                "Client": s.client,
+                "Total Fee": s.price,
+                "Payout": s.staff
+            }));
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Sessions");
+            XLSX.writeFile(wb, `${u.title} ${u.fname} ${u.lname} ${window.state.payDate.toLocaleString('en-US', { month: 'short', year: 'numeric' }).replace(/\s+/g, '')} Statement.xlsx`);
+        };
+
+        window.exportCounselorPDF = function(uid) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const u = window.state.users.find(x => x.id === uid);
+            const m = window.state.payDate.getMonth(), y = window.state.payDate.getFullYear();
+            const logs = window.state.sessions.filter(s => { const d = new Date(s.date); return d.getMonth() === m && d.getFullYear() === y && s.uid === uid && s.verified === true; });
+            
+            doc.setFillColor(6, 78, 59); doc.rect(0, 0, 210, 40, 'F');
+            doc.setTextColor(255, 255, 255); doc.setFontSize(24); doc.text(window.state.centerName, 20, 20);
+            doc.setFontSize(10); doc.text(`Statement Period: ${window.state.payDate.toLocaleString('en-US', { month: 'long', year: 'numeric' })}`, 20, 30);
+            if(window.state.logoBase64) doc.addImage(window.state.logoBase64, 'PNG', 165, 5, 30, 30);
+            
+            doc.setTextColor(6, 78, 59); doc.setFontSize(16); doc.text(`${u.title} ${u.fname} ${u.lname}`, 20, 55);
+            doc.setFontSize(10); doc.setTextColor(100); doc.text("MONTHLY CLIENT SUMMARY", 20, 62);
+            
+            const clientGroups = {};
+            logs.forEach(s => {
+                if(!clientGroups[s.client]) {
+                    clientGroups[s.client] = { count: 0, rate: s.staff, total: 0 };
+                }
+                clientGroups[s.client].count++;
+                clientGroups[s.client].total += s.staff;
+            });
+
+            const tableRows = Object.keys(clientGroups).map(name => [
+                name,
+                clientGroups[name].count,
+                `${clientGroups[name].rate} EGP`,
+                `${clientGroups[name].total} EGP`
+            ]);
+
+            doc.autoTable({
+                startY: 70,
+                head: [['Client Name', 'Sessions', 'Rate/Session', 'Total Amount']],
+                body: tableRows,
+                headStyles: { fillColor: [6, 78, 59], fontSize: 9, fontStyle: 'bold' },
+                bodyStyles: { fontSize: 9 },
+                alternateRowStyles: { fillColor: [248, 250, 252] }
+            });
+
+            const totalPayout = logs.reduce((acc, s) => acc + s.staff, 0);
+            const finalY = doc.lastAutoTable.finalY + 15;
+            
+            doc.setFillColor(241, 245, 249); doc.rect(130, finalY - 5, 60, 20, 'F');
+            doc.setTextColor(6, 78, 59); doc.setFontSize(10); doc.text("TOTAL PAYOUT:", 135, finalY + 3);
+            doc.setFontSize(14); doc.text(`${totalPayout.toLocaleString()} EGP`, 135, finalY + 11);
+
+            doc.save(`${u.title} ${u.fname} ${u.lname} ${window.state.payDate.toLocaleString('en-US', { month: 'short', year: 'numeric' }).replace(/\s+/g, '')} Statement.pdf`);
+        };
+        
+        function translateName(text) {
+            if(!text) return "";
+            let result = text;
+            Object.keys(TRANSLATIONS_NAMES).forEach(key => result = result.replace(new RegExp(key, 'g'), TRANSLATIONS_NAMES[key]));
+            return result;
+        }
+
+        window.handleExcelImport = function(event) {
+            const file = event.target.files[0];
+            if(!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array', cellDates: true});
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                const rows = XLSX.utils.sheet_to_json(sheet, {header: 1});
+                const newSessions = [];
+                for(let i = 1; i < rows.length; i++) {
+                    const row = rows[i];
+                    if(!row || row.length < 10) continue;
+                    const counselorRaw = (row[3] || "").toString().trim();
+                    const clientRaw = (row[5] || "").toString().trim();
+                    const totalFee = parseFloat(row[9]) || 0;
+                    let staffShare = parseFloat(row[10]) || 0;
+                    if(!counselorRaw) continue;
+                    if(totalFee === 350) staffShare = 250;
+                    let sessionDate = row[0] instanceof Date ? row[0].toISOString().split('T')[0] : row[0];
+                    let user = window.state.users.find(u => u.originalArabic === counselorRaw);
+                    if(!user) {
+                        const parsed = (function(fullName) {
+                            const titles = ["د/", "أ/", "م/"];
+                            let title = ""; let remaining = fullName.trim();
+                            for (let t of titles) if (remaining.startsWith(t)) { title = t; remaining = remaining.substring(t.length).trim(); break; }
+                            const parts = remaining.split(/\s+/);
+                            return { title, fname: parts[0] || "", lname: parts.slice(1).join(" ") || "" };
+                        })(counselorRaw);
+                        user = { id: 'u-' + Math.random().toString(36).substr(2, 9), ...parsed, originalArabic: counselorRaw, fname: translateName(parsed.fname), lname: translateName(parsed.lname), title: translateName(parsed.title), role: 'counselor' };
+                        window.state.users.push(user);
+                    }
+                    newSessions.push({ id: 's-' + Math.random().toString(36).substr(2, 9), uid: user.id, date: sessionDate, client: translateName(clientRaw), price: totalFee, center: totalFee - staffShare, staff: staffShare, verified: totalFee === 350, isFlagged: totalFee !== 350 });
+                }
+                window.state.sessions = [...newSessions, ...window.state.sessions];
+                window.localSave();
+                nav('dashboard');
+            };
+            reader.readAsArrayBuffer(file);
+        };
+    </script>
+</body>
+</html>
